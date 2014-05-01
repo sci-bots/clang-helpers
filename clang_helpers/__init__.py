@@ -37,7 +37,7 @@ def extract_class_declarations(root_cursor):
 
 def open_cpp_source(source_path, *args, **kwargs):
     index = clang.cindex.Index.create()
-    translational_unit = index.parse('Node.h', ['-x', 'c++'] + list(args),
+    translational_unit = index.parse(source_path, ['-x', 'c++'] + list(args),
                                      **kwargs)
 
     return translational_unit.cursor
