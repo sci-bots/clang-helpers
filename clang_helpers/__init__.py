@@ -9,10 +9,12 @@ clang.cindex.Config.set_library_file(find_library('clang'))
 
 def extract_method_signature(method_cursor):
     definition = method_cursor.get_definition()
+    return_type = definition.result_type.get_canonical().kind
+    arguments = OrderedDict([(a.displayname, a.type.get_canonical().kind)
+                             for a in definition.get_arguments()])
     return (method_cursor.displayname,
-            definition.result_type.get_canonical().kind,
-            [(a.type.get_canonical().kind, a.displayname)
-             for a in definition.get_arguments()])
+            OrderedDict([('return_type', return_type),
+                         ('arguments', arguments)]))
 
 
 def extract_method_signatures(class_cursor):
@@ -25,7 +27,7 @@ def extract_method_signatures(class_cursor):
     for s in method_signatures:
         method_name = s[0][:s[0].index('(')]
         signatures = methods.setdefault(method_name, [])
-        signatures.append(s[1:])
+        signatures.append(s[1])
     return methods
 
 
