@@ -1,16 +1,24 @@
 from collections import OrderedDict
 
 from ctypes.util import find_library
-from clang.cindex import CursorKind
+from clang.cindex import CursorKind, TypeKind
 import clang.cindex
 
 clang.cindex.Config.set_library_file(find_library('clang'))
 
 
+def _get_argument_type(arg):
+    if arg.type.kind == TypeKind.POINTER:
+        atom_type = arg.type.get_pointee().get_canonical().kind
+        return (TypeKind.POINTER, atom_type)
+    else:
+        return arg.type.get_canonical().kind
+
+
 def extract_method_signature(method_cursor):
     definition = method_cursor.get_definition()
     return_type = definition.result_type.get_canonical().kind
-    arguments = OrderedDict([(a.displayname, a.type.get_canonical().kind)
+    arguments = OrderedDict([(a.displayname, _get_argument_type(a))
                              for a in definition.get_arguments()])
     return (method_cursor.displayname,
             OrderedDict([('return_type', return_type),
