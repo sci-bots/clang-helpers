@@ -3,8 +3,12 @@ from collections import OrderedDict
 from ctypes.util import find_library
 from clang.cindex import CursorKind, TypeKind
 import clang.cindex
+import platform
 
-clang.cindex.Config.set_library_file(find_library('clang'))
+if platform.platform().startswith('Darwin'):
+    clang.cindex.Config.set_library_file('/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/libclang.dylib')
+else:
+    clang.cindex.Config.set_library_file(find_library('clang'))
 
 
 STD_INT_TYPE = OrderedDict([
