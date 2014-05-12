@@ -7,10 +7,29 @@ import clang.cindex
 clang.cindex.Config.set_library_file(find_library('clang'))
 
 
+STD_INT_TYPE = OrderedDict([
+    (TypeKind.BOOL, 'bool'),
+    (TypeKind.CHAR_S, 'int8_t'),
+    (TypeKind.SCHAR, 'int8_t'),
+    (TypeKind.CHAR_U, 'uint8_t'),
+    (TypeKind.FLOAT, 'float'),
+    (TypeKind.INT, 'int32_t'),
+    (TypeKind.LONG, 'int32_t'),
+    (TypeKind.LONGLONG, 'int64_t'),
+    (TypeKind.SHORT, 'int16_t'),
+    (TypeKind.UCHAR, 'uint8_t'),
+    (TypeKind.UINT, 'uint32_t'),
+    (TypeKind.ULONG, 'uint64_t'),
+    (TypeKind.USHORT, 'uint16_t'),
+    (TypeKind.VOID, None)])
+
+
 def _get_argument_type(arg):
     if arg.type.kind == TypeKind.POINTER:
         atom_type = arg.type.get_pointee().get_canonical().kind
         return (TypeKind.POINTER, atom_type)
+    elif arg.type.kind == TypeKind.RECORD:
+        return arg
     else:
         return arg.type.get_canonical().kind
 
@@ -51,3 +70,11 @@ def open_cpp_source(source_path, *args, **kwargs):
                                      **kwargs)
 
     return translational_unit.cursor
+
+
+def get_stdint_type(clang_type_kind):
+    try:
+        return STD_INT_TYPE[clang_type_kind]
+    except TypeError:
+        # This is an array type.
+        return (STD_INT_TYPE[clang_type_kind['atom_type']], 'array')
