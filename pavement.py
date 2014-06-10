@@ -12,7 +12,8 @@ setup(name='clang_helpers',
       author='Christian Fobel',
       url='https://github.com/wheeler-microfluidics/clang_helpers',
       license='GPL',
-      packages=['clang_helpers', ])
+      packages=['clang_helpers', 'clang_helpers.clang'],
+      package_data={'clang_helpers': ['libclang/*']})
 
 
 @task
