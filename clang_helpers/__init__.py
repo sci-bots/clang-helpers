@@ -19,7 +19,8 @@ elif platform.platform().startswith('Windows'):
     clang.cindex.Config.set_library_file(lib_path)
 else:
     try:
-        lib_path = os.path.join(clang.__path__[0], '..', 'libclang', 'libclang.so')
+        lib_path = os.path.join(clang.__path__[0], '..', 'libclang',
+                                'libclang-3.5.%s.so' % platform.processor())
         clang.cindex.Config.set_library_file(lib_path)
     except:
         from ctypes.util import find_library
