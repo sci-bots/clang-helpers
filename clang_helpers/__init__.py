@@ -57,7 +57,7 @@ def _get_argument_type(arg):
 
 def extract_method_signature(method_cursor):
     definition = method_cursor.get_definition()
-    return_type = definition.result_type.get_canonical().kind
+    return_type = definition.result_type
     arguments = OrderedDict([(a.displayname, _get_argument_type(a))
                              for a in definition.get_arguments()])
     return (method_cursor.displayname,
