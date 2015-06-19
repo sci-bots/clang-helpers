@@ -8,6 +8,14 @@ from collections import OrderedDict
 
 import pandas as pd
 from clang.cindex import CursorKind, TypeKind
+from . import STD_INT_TYPE as _STD_INT_TYPE
+
+
+STD_INT_TYPE = pd.Series(_STD_INT_TYPE)
+
+
+def underscore_to_camelcase(value):
+    return ''.join(x.capitalize() if x else '_' for x in value.split('_'))
 
 
 def resolve_array_type(arg_type):
@@ -69,7 +77,7 @@ def get_clang_method_frame(method_cursor):
     return clang_sig_info
 
 
-def get_clang_methods_frame(class_cursor):
+def get_clang_methods_frame(class_cursor, std_types=True):
     frames = []
 
     for m in class_cursor.get_children():
@@ -77,7 +85,20 @@ def get_clang_methods_frame(class_cursor):
             frame = get_clang_method_frame(m)
             frames.append(frame)
 
-    return pd.concat(frames)[['method_name', 'return_atom_type',
-                              'return_ndims', 'arg_count', 'arg_i',
-                              'arg_name',
-                              'atom_type']].reset_index(drop=True)
+    result = pd.concat(frames)
+    result = result.where(pd.notnull(result), None)
+    if std_types:
+        # Replace clang type instances with standard C type names.
+        result.loc[:, 'return_atom_type'] = \
+            STD_INT_TYPE[result .return_atom_type].values
+        result.loc[result.arg_count > 0, 'atom_type'] = \
+            STD_INT_TYPE[result.loc[result.arg_count > 0, 'atom_type']].values
+    result.insert(1, 'camel_name',
+                  result.method_name.map(underscore_to_camelcase))
+    method_i = pd.Series(result.method_name.unique())
+    method_i = pd.Series(method_i.index, index=method_i)
+    result.insert(0, 'method_i', method_i[result.method_name].values)
+
+    return result[['method_i', 'method_name', 'camel_name','return_atom_type',
+                   'return_ndims', 'arg_count', 'arg_i', 'arg_name',
+                   'atom_type', 'ndims']].reset_index(drop=True)
