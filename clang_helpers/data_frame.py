@@ -87,6 +87,11 @@ def get_clang_methods_frame(class_cursor, std_types=True):
 
     result = pd.concat(frames)
     result = result.where(pd.notnull(result), None)
+    if 'atom_type' not in result.columns:
+        result['arg_i'] = None
+        result['arg_name'] = None
+        result['atom_type'] = None
+        result['ndims'] = None
     if std_types:
         # Replace clang type instances with standard C type names.
         result.loc[:, 'return_atom_type'] = \
