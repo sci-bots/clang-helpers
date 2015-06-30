@@ -48,6 +48,11 @@ def _get_c_type_info(clang_type):
 
 def get_clang_method_frame(method_cursor):
     definition = method_cursor.get_definition()
+    if definition is None:
+        # `get_definition()` returns `None` for pure virtual C++ methods.
+        # For the case of pure virtual methods, the definition is the method
+        # cursor itself.
+        definition = method_cursor
     return_type = _get_c_type_info(definition.result_type)
     name = method_cursor.displayname[:method_cursor.displayname
                                      .index('(')]
