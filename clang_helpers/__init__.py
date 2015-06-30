@@ -79,10 +79,31 @@ def extract_method_signatures(class_cursor):
     return methods
 
 
-def extract_class_declarations(root_cursor):
-    return OrderedDict([(n.displayname, n)
-                        for n in root_cursor.get_children()
-                        if n.kind == CursorKind.CLASS_DECL])
+def extract_class_declarations(root_cursor, include_templates=True):
+    def _extract_classes_level(root_cursor, include_templates=True):
+        return OrderedDict([(n.displayname, n)
+                            for n in root_cursor.get_children()
+                            if (n.kind == CursorKind.CLASS_DECL) or
+                            (include_templates and
+                            (n.kind == CursorKind.CLASS_TEMPLATE))])
+
+
+    def _extract_classes(root_cursor, classes, parents=None,
+                         include_templates=True):
+        classes_ = _extract_classes_level(root_cursor).iteritems()
+        if parents is None:
+            parents = tuple()
+        classes.update(OrderedDict([('::'.join([p.displayname
+                                                for p in parents] + [k]), v)
+                                    for k, v in classes_]))
+        # Recurse through namespaces to find available classes.
+        for c in root_cursor.get_children():
+            if c.kind == CursorKind.NAMESPACE:
+                _extract_classes(c, classes, parents + (c, ))
+
+    classes = OrderedDict()
+    _extract_classes(root_cursor, classes, include_templates=include_templates)
+    return classes
 
 
 def open_cpp_source(source_path, *args, **kwargs):
