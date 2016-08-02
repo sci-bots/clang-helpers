@@ -1,6 +1,8 @@
+import sys
+
 from paver.easy import task, needs
 from paver.setuputils import setup, install_distutils_tasks
-
+sys.path.insert(0, '.')
 import version
 
 
