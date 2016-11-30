@@ -15,11 +15,19 @@ setup(name='clang_helpers',
       url='https://github.com/wheeler-microfluidics/clang_helpers',
       license='GPL',
       packages=['clang_helpers', 'clang_helpers.clang'],
-      package_data={'clang_helpers': ['libclang/*']})
+      package_data={'clang_helpers': ['libclang/*']},
+      install_requires=['clang>=3.8', 'path_helpers'])
 
 
 @task
 @needs('generate_setup', 'minilib', 'setuptools.command.sdist')
 def sdist():
     """Overrides sdist to make sure that our setup.py is generated."""
+    pass
+
+
+@task
+@needs('generate_setup', 'minilib', 'setuptools.command.bdist_wheel')
+def bdist_wheel():
+    """Overrides bdist_wheel to make sure that our setup.py is generated."""
     pass

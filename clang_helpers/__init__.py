@@ -1,31 +1,8 @@
-import os
 from collections import OrderedDict
 
-import clang
 from clang.cindex import CursorKind, TypeKind
+import clang
 import clang.cindex
-import platform
-
-
-# Load the `libclang` included in the `clang-helpers` package for the active
-# operating system.
-if platform.platform().startswith('Darwin'):
-    lib_path = os.path.join(clang.__path__[0], '..', 'libclang', 'libclang.dylib')
-    print '[clang-helpers] %s' % lib_path
-    clang.cindex.Config.set_library_file(lib_path)
-elif platform.platform().startswith('Windows'):
-    lib_path = os.path.join(clang.__path__[0], '..', 'libclang', 'libclang.dll')
-    print '[clang-helpers] %s' % lib_path
-    clang.cindex.Config.set_library_file(lib_path)
-else:
-    try:
-        lib_path = os.path.join(clang.__path__[0], '..', 'libclang',
-                                'libclang-3.5.%s.so' % platform.processor())
-        clang.cindex.Config.set_library_file(lib_path)
-    except:
-        from ctypes.util import find_library
-
-        clang.cindex.Config.set_library_file(find_library('clang'))
 
 
 STD_INT_TYPE = OrderedDict([
