@@ -1,0 +1,351 @@
+#!/usr/bin/env python
+#
+#
+# Understanding CLang AST : http://clang.llvm.org/docs/IntroductionToTheClangAST.html
+#
+# Requirements
+#
+# 1. Install Clang :  Visit http://llvm.org/releases/download.html
+#
+# 2. pip install clang
+#
+# Note : Make sure that your Python runtime and Clang are same architecture
+#
+#Core
+from collections import OrderedDict
+import sys
+
+import clang
+import clang.cindex
+
+
+class DotOrderedDict(OrderedDict):
+    def __getattr__(self, attr):
+        try:
+            result = super(DotOrderedDict, self).__getattribute__(attr)
+            return result
+        except AttributeError:
+            if attr == '_OrderedDict__root':
+                raise
+            return self.get(attr, None)
+
+    def __setattr__(self, attr, value):
+        if attr.startswith('_'):
+            super(DotOrderedDict, self).__setattr__(attr, value)
+        else:
+            self.__setitem__(attr, value)
+
+    __delattr__ = OrderedDict.__delitem__
+
+
+class CppAstWalker(object):
+    @staticmethod
+    def trimClangNodeName(nodeName):
+        ret = str(nodeName)
+        ret = ret.split(".")[1]
+        return ret
+
+    @staticmethod
+    def printASTNode(node, level, exit=False):
+        for i in range(0, level):
+            print '  ',
+        if exit is True:
+            print ("Exiting " + CppAstWalker.trimClangNodeName(node.kind))
+        else:
+            print CppAstWalker.trimClangNodeName(node.kind)
+
+    def visitNode(self, node, level):
+        CppAstWalker.printASTNode(node, level)
+
+    def leaveNode(self, node, level):
+        CppAstWalker.printASTNode(node, level, True)
+
+    def walkAST(self, node, level):
+        if node is not None:
+            level = level + 1
+            self.visitNode(node, level)
+        # Recurse for children of this node
+        for childNode in node.get_children():
+            self.walkAST(childNode, level)
+        self.leaveNode(node, level)
+        level = level - 1
+
+
+def node_parents(node):
+    parents = []
+
+    node_i = node
+
+    while node_i.lexical_parent:
+        node_i = node_i.lexical_parent
+        parents.insert(0, node_i)
+    return parents
+
+
+def format_parents(parents):
+    return '::'.join(['{}<{}>'.format(p_i.displayname,
+                                      str(p_i.kind).split('.')[-1])
+                      for p_i in parents])
+
+
+def resolve_typedef(typedef_node):
+    '''
+    Parameters
+    ----------
+    typedef_node : clang.cindex.Cursor
+
+    Returns
+    -------
+    clang.cindex.Type
+        Underlying type from ``typedef``.
+
+        If input :data:`typedef_node` was not a type definition, return
+        :data:`typedef_node`.
+    '''
+    if typedef_node.kind is clang.cindex.TypeKind.TYPEDEF:
+        typedef_node = typedef_node.get_declaration()
+    if not typedef_node.kind is clang.cindex.CursorKind.TYPEDEF_DECL:
+        return typedef_node
+
+    #Find underlying type of (possibly nested) typedef.
+    type_i = typedef_node.underlying_typedef_type
+    while type_i.kind == clang.cindex.TypeKind.TYPEDEF:
+        type_i = type_i.get_declaration().underlying_typedef_type
+    return type_i
+
+
+def type_node(type_):
+    type_i = resolve_typedef(type_)
+    result = {'type': type_i,
+              'typename': type_i.spelling,
+              'kind': type_i.kind,
+              'const': type_.is_const_qualified()}
+
+    if type_i.kind.name == 'POINTER':
+        result['pointer'] = True
+        type_i = type_i.get_pointee()
+        result['const'] = type_i.is_const_qualified()
+        result['type'] = resolve_typedef(type_i)
+        result['kind'] = result['type'].kind
+    return result
+
+
+def trimClangNodeName(nodeName):
+    ret = str(nodeName)
+    ret = ret.split(".")[1]
+    return ret
+
+
+class CppAst(CppAstWalker):
+    def __init__(self):
+        super(CppAst, self).__init__()
+        self._translation_unit = OrderedDict()
+        self._global = OrderedDict()
+        self._classes = OrderedDict()
+        self._access_specifier = None
+        self._parents = []
+        self.root = OrderedDict()
+
+    def leaveNode(self, node, level):
+        # super(CppAst, self).leaveNode(node, level)
+        pass
+
+    def visitNode(self, node, level):
+        # super(CppAst, self).visitNode(node, level)
+
+        if node.kind is clang.cindex.CursorKind.CXX_ACCESS_SPEC_DECL:
+            self._access_specifier = node.access_specifier
+            # name = trimClangNodeName(self._access_specifier)
+        # else:
+            # name = node.displayname
+
+        parents = node_parents(node)
+        # print format_parents(parents),
+        # print '{}<{}> (line={} col={})'.format(name,
+                                               # trimClangNodeName(node.kind),
+                                               # node.location.line,
+                                               # node.location.column)
+
+        if node.kind is clang.cindex.CursorKind.CXX_BASE_SPECIFIER:
+            base_specifiers_i = self._class.setdefault('base_specifiers',
+                                                       OrderedDict())
+            base_specifiers_i[node.type.spelling] = {'node': node,
+                                                     'type': node.type,
+                                                     'access_specifier':
+                                                     node.access_specifier}
+            return
+
+        if node.kind is clang.cindex.CursorKind.CXX_ACCESS_SPEC_DECL:
+            return
+
+        parent = self.root
+
+        if node.kind is clang.cindex.CursorKind.TRANSLATION_UNIT:
+            translation_units_i = parent.setdefault('translation_units',
+                                                    OrderedDict())
+            translation_units_i[node.displayname] = {'node': node}
+            return
+
+        for parent_node_i in parents:
+            if parent_node_i.kind is clang.cindex.CursorKind.TRANSLATION_UNIT:
+                # Top-level parent.
+                parent = parent['translation_units'][parent_node_i.displayname]
+            elif parent_node_i.kind in (clang.cindex.CursorKind.CLASS_DECL,
+                                        clang.cindex.CursorKind.CLASS_TEMPLATE):
+                parent = parent['classes'][parent_node_i.spelling]
+            elif parent_node_i.kind in (clang.cindex.CursorKind.NAMESPACE, ):
+                parent = parent['namespaces'][parent_node_i.spelling]
+
+        if node.kind in (clang.cindex.CursorKind.CLASS_DECL,
+                         clang.cindex.CursorKind.CLASS_TEMPLATE):
+            classes_i = parent.setdefault('classes', OrderedDict())
+            classes_i[node.spelling] = {'node': node}
+            self._class = classes_i[node.spelling]
+            return
+
+        if node.kind is clang.cindex.CursorKind.NAMESPACE:
+            namespaces_i = parent.setdefault('namespaces', OrderedDict())
+            namespaces_i[node.spelling] = {'node': node}
+            return
+
+        if node.kind is clang.cindex.CursorKind.TYPEDEF_DECL:
+            typedefs_i = parent.setdefault('typedefs', OrderedDict())
+
+            type_i = resolve_typedef(node)
+            typedefs_i[node.spelling] = {'node': node,
+                                         'type': type_i,
+                                         'kind': type_i.kind}
+            return
+
+        if node.kind is clang.cindex.CursorKind.TEMPLATE_TYPE_PARAMETER:
+            template_types_i = parent.setdefault('template_types',
+                                                  OrderedDict())
+            template_types_i[node.displayname] = {'node': node}
+            return
+
+        # # Process members #
+        if node.kind is clang.cindex.CursorKind.VAR_DECL:
+            members_i = parent.setdefault('members', OrderedDict())
+            members_i[node.spelling] = {'access_specifier':
+                                        self._access_specifier,
+                                        'node': node}
+            members_i[node.spelling].update(type_node(node.type))
+        elif node.kind is clang.cindex.CursorKind.FIELD_DECL:
+            members_i = parent.setdefault('members', OrderedDict())
+            members_i[node.spelling] = {'access_specifier':
+                                        self._access_specifier,
+                                        'typename': node.type.spelling,
+                                        'node': node}
+            members_i[node.spelling].update(type_node(node.type))
+        elif node.kind is clang.cindex.CursorKind.CXX_METHOD:
+            members_i = parent.setdefault('members', OrderedDict())
+
+            result_type = resolve_typedef(node.result_type)
+            result_kind = result_type.kind.name
+
+            args = [{'name': a.displayname, 'node': a}
+                    for a in node.get_arguments()]
+
+            for arg_i in args:
+                arg_i.update(type_node(arg_i['node'].type))
+
+            if result_kind == 'UNEXPOSED':
+                if result_type.spelling in parent.get('template_types', {}):
+                    result_kind = '::'.join([parents[-1].displayname,
+                                             result_type.spelling])
+            members_i[node.spelling] = {'access_specifier':
+                                        self._access_specifier,
+                                        'result_type': result_kind,
+                                        'kind': node.type.kind,
+                                        'typename': 'method',
+                                        'arguments': args,
+                                        'node': node}
+
+            if node.is_definition():
+                comments_i = []
+                for child_i in node.get_children():
+                    if child_i.kind is clang.cindex.CursorKind.COMPOUND_STMT:
+                        comments_i = [t for t in child_i.get_tokens()
+                                      if t.kind is
+                                      clang.cindex.TokenKind.COMMENT]
+                        break
+
+                if comments_i:
+                    members_i[node.spelling]['description'] = comments_i[0].spelling
+
+
+
+def parse_cpp_ast(input_file, *args, **kwargs):
+    '''
+    Parameters
+    ----------
+    input_file : str
+        Input file path.
+    *args : optional
+        Additional arguments to pass to :meth:`clang.cindex.Index.parse`.
+    **kwargs : optional
+        Additional keyword arguments to pass to
+        :meth:`clang.cindex.Index.parse`.
+    '''
+    # If the line below fails , set Clang library path with
+    # clang.cindex.Config.set_library_path
+    clang_index = clang.cindex.Index.create()
+    translationUnit = clang_index.parse(input_file, ['-x', 'c++'] + list(args),
+                                        **kwargs)
+    root_node = translationUnit.cursor
+
+    cpp_ast = CppAst()
+    cpp_ast.walkAST(root_node, 0)
+    return cpp_ast.root['translation_units'].values()[0]
+
+
+def _format_json_safe(obj):
+    '''
+    Remove/replace ctype instances, leaving only values that are
+    json-serializable.
+    '''
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if isinstance(v, clang.cindex.TypeKind):
+                obj[k] = v.name
+            elif isinstance(v, clang.cindex.AccessSpecifier):
+                obj[k] = v.name
+            elif isinstance(v, (clang.cindex.Cursor, clang.cindex.Type)):
+                if isinstance(v, clang.cindex.Cursor):
+                    obj['location'] = dict(zip(['file', 'line', 'column'],
+                                                (v.location.file.name
+                                                 if v.location.file else None,
+                                                 v.location.line,
+                                                 v.location.column)))
+                obj['name'] = v.spelling
+                del obj[k]
+            elif isinstance(v, (dict, list)):
+                _format_json_safe(v)
+    elif isinstance(obj, list):
+        remove_indexes = []
+        for i, v in enumerate(obj):
+            if isinstance(v, clang.cindex.TypeKind):
+                obj[k] = v.name
+            elif isinstance(v, clang.cindex.Cursor):
+                remove_indexes.append(i)
+            elif isinstance(v, (dict, list)):
+                _format_json_safe(v)
+        for i in remove_indexes:
+            del obj[i]
+
+
+def show_location(location, stream=sys.stdout):
+    with open(location['file'], 'r') as source:
+        line = source.readlines()[location['line']]
+        print >> stream, '# {file} line {line} col {column}'.format(**location)
+        print >> stream, ''
+        print >> stream, line.strip()
+        print >> stream, ' ' * (location['column'] - 1) + '^'
+
+
+if __name__ == "__main__":
+    # import pprint
+    from IPython.lib.pretty import pprint
+
+    include_path = r'C:\Users\Christian\Documents\GitHub\c-array-defs\c_array_defs\Arduino\CArrayDefs'
+    cpp_ast = parse_cpp_ast(sys.argv[1], '-I', include_path)
