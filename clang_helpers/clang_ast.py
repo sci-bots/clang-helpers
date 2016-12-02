@@ -19,6 +19,7 @@ import clang
 import clang.cindex
 import path_helpers as ph
 import pydash as py_
+from . import STD_INT_KIND
 
 
 class DotOrderedDict(OrderedDict):
@@ -330,7 +331,7 @@ def _format_json_safe(obj):
     if isinstance(obj, dict):
         for k, v in obj.items():
             if isinstance(v, clang.cindex.TypeKind):
-                obj[k] = v.name
+                obj[k] = STD_INT_KIND.get(v.name, v.name)
             elif isinstance(v, clang.cindex.AccessSpecifier):
                 obj[k] = v.name
             elif isinstance(v, clang.cindex.Cursor):
