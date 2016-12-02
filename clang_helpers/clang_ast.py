@@ -280,6 +280,7 @@ class CppAst(CppAstWalker):
                                         'kind': node.type.kind,
                                         'typename': 'method',
                                         'arguments': args,
+                                        'name': node.spelling,
                                         'node': node}
 
             if node.is_definition():
