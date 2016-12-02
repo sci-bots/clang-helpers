@@ -129,6 +129,14 @@ def type_node(type_):
         result['const'] = type_i.is_const_qualified()
         result['type'] = resolve_typedef(type_i)
         result['kind'] = result['type'].kind
+    elif type_i.kind.name in ('CONSTANTARRAY', 'INCOMPLETEARRAY'):
+        # Extract resolved element type and size from constant-sized array.
+        result['element_type'] = resolve_typedef(type_i
+                                                 .get_array_element_type())
+        result['element_kind'] = result['element_type'].kind
+        array_size = type_i.get_array_size()
+        if array_size >= 0:
+            result['array_size'] = array_size
     return result
 
 
