@@ -175,6 +175,7 @@ class CppAst(CppAstWalker):
         self._in_function = False
         self._parents = []
         self.root = OrderedDict()
+        self._debug_output = False
 
     def leaveNode(self, node, level):
         # super(CppAst, self).leaveNode(node, level)
@@ -187,9 +188,15 @@ class CppAst(CppAstWalker):
             self._access_specifier = 'PROTECTED'
         if node.kind is clang.cindex.CursorKind.FUNCTION_DECL:
             self._in_function = False
+        # if node.kind is clang.cindex.CursorKind.FUNCTION_DECL:
+            # print node.spelling,
+            # super(CppAst, self).leaveNode(node, level)
 
     def visitNode(self, node, level):
         # super(CppAst, self).visitNode(node, level)
+        # if self._debug_output:
+            # print node.spelling,
+            # super(CppAst, self).visitNode(node, level)
         if node.kind in (clang.cindex.CursorKind.CLASS_DECL,
                          clang.cindex.CursorKind.CLASS_TEMPLATE,
                          clang.cindex.CursorKind.STRUCT_DECL):
