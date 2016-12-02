@@ -17,6 +17,7 @@ import sys
 
 import clang
 import clang.cindex
+import path_helpers as ph
 
 
 class DotOrderedDict(OrderedDict):
@@ -365,9 +366,28 @@ def show_location(location, stream=sys.stdout):
         print >> stream, ' ' * (location['column'] - 1) + '^'
 
 
-if __name__ == "__main__":
-    # import pprint
-    from IPython.lib.pretty import pprint
+def parse_args(args=None):
+    '''Parses arguments, returns (options, args).'''
+    from argparse import ArgumentParser
 
-    include_path = r'C:\Users\Christian\Documents\GitHub\c-array-defs\c_array_defs\Arduino\CArrayDefs'
-    cpp_ast = parse_cpp_ast(sys.argv[1], '-I', include_path)
+    if args is None:
+        args = sys.argv
+
+    parser = ArgumentParser(description='Parse clang AST to nested dictionary')
+    parser.add_argument('input_file', type=ph.path)
+    parser.add_argument('-I', '--include', type=ph.path, action='append')
+
+    args = parser.parse_args()
+    return args
+
+
+if __name__ == "__main__":
+    args = parse_args()
+
+    include_args = ['-I{}'.format(p) for p in args.include]
+    header_file = ph.path(sys.argv[1]).realpath()
+
+    cpp_ast_json = parse_cpp_ast(header_file, *include_args)
+    _format_json_safe(cpp_ast_json)
+    cpp_ast = parse_cpp_ast(header_file, *include_args)
+
