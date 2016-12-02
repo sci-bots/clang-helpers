@@ -339,7 +339,7 @@ def _format_json_safe(obj):
                                                  if v.location.file else None,
                                                  v.location.line,
                                                  v.location.column)))
-                obj['name'] = v.spelling
+                    obj['name'] = v.spelling
                 del obj[k]
             elif isinstance(v, (dict, list)):
                 _format_json_safe(v)
