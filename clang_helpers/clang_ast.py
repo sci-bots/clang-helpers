@@ -18,6 +18,7 @@ import sys
 import clang
 import clang.cindex
 import path_helpers as ph
+import pydash as py_
 
 
 class DotOrderedDict(OrderedDict):
@@ -366,6 +367,17 @@ def show_location(location, stream=sys.stdout):
         print >> stream, ' ' * (location['column'] - 1) + '^'
 
 
+def get_class_path(class_str):
+    parts_i = class_str.split('::')
+    return ('namespaces.' + '.namespaces.'.join(parts_i[:-1]) + '.'
+            if parts_i[:-1] else '') + 'classes.' + parts_i[-1]
+
+
+# Generate function to look up class by name, e.g., `foo::bar::FooBar`.
+get_class_factory = lambda ast: py_.pipe(get_class_path,
+                                         py_.curry(py_.get, arity=2)(ast))
+
+
 def parse_args(args=None):
     '''Parses arguments, returns (options, args).'''
     from argparse import ArgumentParser
@@ -391,3 +403,5 @@ if __name__ == "__main__":
     _format_json_safe(cpp_ast_json)
     cpp_ast = parse_cpp_ast(header_file, *include_args)
 
+    get_class = get_class_factory(cpp_ast)
+    get_class_json = get_class_factory(cpp_ast_json)
