@@ -139,19 +139,32 @@ def trimClangNodeName(nodeName):
 class CppAst(CppAstWalker):
     def __init__(self):
         super(CppAst, self).__init__()
-        self._translation_unit = OrderedDict()
-        self._global = OrderedDict()
-        self._classes = OrderedDict()
         self._access_specifier = None
+        self._in_class = False
+        self._in_method = False
+        self._in_function = False
         self._parents = []
         self.root = OrderedDict()
 
     def leaveNode(self, node, level):
         # super(CppAst, self).leaveNode(node, level)
-        pass
+        if node.kind is clang.cindex.CursorKind.CXX_METHOD:
+            self._in_method = False
+        if node.kind in (clang.cindex.CursorKind.CLASS_DECL,
+                         clang.cindex.CursorKind.CLASS_TEMPLATE,
+                         clang.cindex.CursorKind.STRUCT_DECL):
+            self._in_class = False
+        if node.kind is clang.cindex.CursorKind.FUNCTION_DECL:
+            self._in_function = False
 
     def visitNode(self, node, level):
         # super(CppAst, self).visitNode(node, level)
+        if node.kind in (clang.cindex.CursorKind.CLASS_DECL,
+                         clang.cindex.CursorKind.CLASS_TEMPLATE,
+                         clang.cindex.CursorKind.STRUCT_DECL):
+            self._in_class = True
+        if node.kind is clang.cindex.CursorKind.FUNCTION_DECL:
+            self._in_function = True
 
         if node.kind is clang.cindex.CursorKind.CXX_ACCESS_SPEC_DECL:
             self._access_specifier = node.access_specifier
@@ -191,13 +204,15 @@ class CppAst(CppAstWalker):
                 # Top-level parent.
                 parent = parent['translation_units'][parent_node_i.displayname]
             elif parent_node_i.kind in (clang.cindex.CursorKind.CLASS_DECL,
-                                        clang.cindex.CursorKind.CLASS_TEMPLATE):
+                                        clang.cindex.CursorKind.CLASS_TEMPLATE,
+                                        clang.cindex.CursorKind.STRUCT_DECL):
                 parent = parent['classes'][parent_node_i.spelling]
             elif parent_node_i.kind in (clang.cindex.CursorKind.NAMESPACE, ):
                 parent = parent['namespaces'][parent_node_i.spelling]
 
         if node.kind in (clang.cindex.CursorKind.CLASS_DECL,
-                         clang.cindex.CursorKind.CLASS_TEMPLATE):
+                         clang.cindex.CursorKind.CLASS_TEMPLATE,
+                         clang.cindex.CursorKind.STRUCT_DECL):
             classes_i = parent.setdefault('classes', OrderedDict())
             classes_i[node.spelling] = {'node': node}
             self._class = classes_i[node.spelling]
@@ -224,13 +239,18 @@ class CppAst(CppAstWalker):
             return
 
         # # Process members #
-        if node.kind is clang.cindex.CursorKind.VAR_DECL:
+        if ((node.kind is clang.cindex.CursorKind.VAR_DECL) and
+            (not self._in_function and (not self._in_class or not
+                                        self._in_method))):
             members_i = parent.setdefault('members', OrderedDict())
             members_i[node.spelling] = {'access_specifier':
                                         self._access_specifier,
                                         'node': node}
             members_i[node.spelling].update(type_node(node.type))
-        elif node.kind is clang.cindex.CursorKind.FIELD_DECL:
+            members_i[node.spelling]['name'] = node.spelling
+        elif ((node.kind is clang.cindex.CursorKind.FIELD_DECL) and
+              (not self._in_function and (not self._in_class or not
+                                          self._in_method))):
             members_i = parent.setdefault('members', OrderedDict())
             members_i[node.spelling] = {'access_specifier':
                                         self._access_specifier,
@@ -238,6 +258,7 @@ class CppAst(CppAstWalker):
                                         'node': node}
             members_i[node.spelling].update(type_node(node.type))
         elif node.kind is clang.cindex.CursorKind.CXX_METHOD:
+            self._in_method = True
             members_i = parent.setdefault('members', OrderedDict())
 
             result_type = resolve_typedef(node.result_type)
