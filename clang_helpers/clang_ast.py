@@ -333,23 +333,22 @@ def _format_json_safe(obj):
                 obj[k] = v.name
             elif isinstance(v, clang.cindex.AccessSpecifier):
                 obj[k] = v.name
-            elif isinstance(v, (clang.cindex.Cursor, clang.cindex.Type)):
-                if isinstance(v, clang.cindex.Cursor):
-                    obj['location'] = dict(zip(['file', 'line', 'column'],
-                                                (v.location.file.name
-                                                 if v.location.file else None,
-                                                 v.location.line,
-                                                 v.location.column)))
-                    obj['name'] = v.spelling
+            elif isinstance(v, clang.cindex.Cursor):
+                obj['location'] = dict(zip(['file', 'line', 'column'],
+                                            (v.location.file.name
+                                             if v.location.file else None,
+                                             v.location.line,
+                                             v.location.column)))
+                obj['name'] = v.spelling
                 del obj[k]
+            elif isinstance(v, clang.cindex.Type):
+                obj[k] = v.spelling
             elif isinstance(v, (dict, list)):
                 _format_json_safe(v)
     elif isinstance(obj, list):
         remove_indexes = []
         for i, v in enumerate(obj):
-            if isinstance(v, clang.cindex.TypeKind):
-                obj[k] = v.name
-            elif isinstance(v, clang.cindex.Cursor):
+            if isinstance(v, clang.cindex.Cursor):
                 remove_indexes.append(i)
             elif isinstance(v, (dict, list)):
                 _format_json_safe(v)
