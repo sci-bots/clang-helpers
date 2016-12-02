@@ -156,6 +156,7 @@ class CppAst(CppAstWalker):
                          clang.cindex.CursorKind.CLASS_TEMPLATE,
                          clang.cindex.CursorKind.STRUCT_DECL):
             self._in_class = False
+            self._access_specifier = 'PROTECTED'
         if node.kind is clang.cindex.CursorKind.FUNCTION_DECL:
             self._in_function = False
 
@@ -164,15 +165,10 @@ class CppAst(CppAstWalker):
         if node.kind in (clang.cindex.CursorKind.CLASS_DECL,
                          clang.cindex.CursorKind.CLASS_TEMPLATE,
                          clang.cindex.CursorKind.STRUCT_DECL):
+            self._access_specifier = 'PROTECTED'
             self._in_class = True
         if node.kind is clang.cindex.CursorKind.FUNCTION_DECL:
             self._in_function = True
-
-        if node.kind is clang.cindex.CursorKind.CXX_ACCESS_SPEC_DECL:
-            self._access_specifier = node.access_specifier
-            # name = trimClangNodeName(self._access_specifier)
-        # else:
-            # name = node.displayname
 
         parents = node_parents(node)
         # print format_parents(parents),
@@ -180,6 +176,10 @@ class CppAst(CppAstWalker):
                                                # trimClangNodeName(node.kind),
                                                # node.location.line,
                                                # node.location.column)
+
+        if node.kind is clang.cindex.CursorKind.CXX_ACCESS_SPEC_DECL:
+            self._access_specifier = node.access_specifier
+            return
 
         if node.kind is clang.cindex.CursorKind.CXX_BASE_SPECIFIER:
             base_specifiers_i = self._class.setdefault('base_specifiers',
@@ -190,15 +190,14 @@ class CppAst(CppAstWalker):
                                                      node.access_specifier}
             return
 
-        if node.kind is clang.cindex.CursorKind.CXX_ACCESS_SPEC_DECL:
-            return
-
         parent = self.root
+
+        node_obj = {'node': node}
 
         if node.kind is clang.cindex.CursorKind.TRANSLATION_UNIT:
             translation_units_i = parent.setdefault('translation_units',
                                                     OrderedDict())
-            translation_units_i[node.displayname] = {'node': node}
+            translation_units_i[node.displayname] = node_obj
             return
 
         for parent_node_i in parents:
@@ -216,49 +215,45 @@ class CppAst(CppAstWalker):
                          clang.cindex.CursorKind.CLASS_TEMPLATE,
                          clang.cindex.CursorKind.STRUCT_DECL):
             classes_i = parent.setdefault('classes', OrderedDict())
-            classes_i[node.spelling] = {'node': node}
+            classes_i[node.spelling] = node_obj
             self._class = classes_i[node.spelling]
             return
 
         if node.kind is clang.cindex.CursorKind.NAMESPACE:
             namespaces_i = parent.setdefault('namespaces', OrderedDict())
-            namespaces_i[node.spelling] = {'node': node}
+            namespaces_i[node.spelling] = node_obj
+            return
+
+        if node.kind is clang.cindex.CursorKind.TEMPLATE_TYPE_PARAMETER:
+            template_types_i = parent.setdefault('template_types',
+                                                  OrderedDict())
+            template_types_i[node.displayname] = node_obj
             return
 
         if node.kind is clang.cindex.CursorKind.TYPEDEF_DECL:
             typedefs_i = parent.setdefault('typedefs', OrderedDict())
 
             type_i = resolve_typedef(node)
-            typedefs_i[node.spelling] = {'node': node,
-                                         'type': type_i,
-                                         'kind': type_i.kind}
-            return
-
-        if node.kind is clang.cindex.CursorKind.TEMPLATE_TYPE_PARAMETER:
-            template_types_i = parent.setdefault('template_types',
-                                                  OrderedDict())
-            template_types_i[node.displayname] = {'node': node}
+            node_obj.update({'type': type_i, 'kind': type_i.kind})
+            typedefs_i[node.spelling] = node_obj
             return
 
         # # Process members #
+        node_obj['name'] = node.spelling
+        if self._in_class:
+            node_obj['access_specifier'] = self._access_specifier
         if ((node.kind is clang.cindex.CursorKind.VAR_DECL) and
             (not self._in_function and (not self._in_class or not
                                         self._in_method))):
             members_i = parent.setdefault('members', OrderedDict())
-            members_i[node.spelling] = {'access_specifier':
-                                        self._access_specifier,
-                                        'node': node}
-            members_i[node.spelling].update(type_node(node.type))
-            members_i[node.spelling]['name'] = node.spelling
+            node_obj.update(type_node(node.type))
+            members_i[node.spelling] = node_obj
         elif ((node.kind is clang.cindex.CursorKind.FIELD_DECL) and
               (not self._in_function and (not self._in_class or not
                                           self._in_method))):
             members_i = parent.setdefault('members', OrderedDict())
-            members_i[node.spelling] = {'access_specifier':
-                                        self._access_specifier,
-                                        'typename': node.type.spelling,
-                                        'node': node}
-            members_i[node.spelling].update(type_node(node.type))
+            node_obj.update(type_node(node.type))
+            members_i[node.spelling] = node_obj
         elif node.kind is clang.cindex.CursorKind.CXX_METHOD:
             self._in_method = True
             members_i = parent.setdefault('members', OrderedDict())
@@ -276,14 +271,10 @@ class CppAst(CppAstWalker):
                 if result_type.spelling in parent.get('template_types', {}):
                     result_kind = '::'.join([parents[-1].displayname,
                                              result_type.spelling])
-            members_i[node.spelling] = {'access_specifier':
-                                        self._access_specifier,
-                                        'result_type': result_kind,
-                                        'kind': node.type.kind,
-                                        'typename': 'method',
-                                        'arguments': args,
-                                        'name': node.spelling,
-                                        'node': node}
+            node_obj.update({'result_type': result_kind,
+                             'kind': node.type.kind,
+                             'typename': 'method',
+                             'arguments': args})
 
             if node.is_definition():
                 comments_i = []
@@ -295,8 +286,8 @@ class CppAst(CppAstWalker):
                         break
 
                 if comments_i:
-                    members_i[node.spelling]['description'] = comments_i[0].spelling
-
+                    node_obj['description'] = comments_i[0].spelling
+                members_i[node.spelling] = node_obj
 
 
 def parse_cpp_ast(input_file, *args, **kwargs):
