@@ -296,7 +296,7 @@ class CppAst(CppAstWalker):
 
                 if comments_i:
                     node_obj['description'] = comments_i[0].spelling
-                members_i[node.spelling] = node_obj
+            members_i[node.spelling] = node_obj
 
 
 def parse_cpp_ast(input_file, *args, **kwargs):
