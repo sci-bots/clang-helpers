@@ -188,15 +188,12 @@ class CppAst(CppAstWalker):
             self._access_specifier = 'PROTECTED'
         if node.kind is clang.cindex.CursorKind.FUNCTION_DECL:
             self._in_function = False
-        # if node.kind is clang.cindex.CursorKind.FUNCTION_DECL:
-            # print node.spelling,
-            # super(CppAst, self).leaveNode(node, level)
+        if self._debug_output:
+            print node.spelling,
+            super(CppAst, self).leaveNode(node, level)
 
     def visitNode(self, node, level):
         # super(CppAst, self).visitNode(node, level)
-        # if self._debug_output:
-            # print node.spelling,
-            # super(CppAst, self).visitNode(node, level)
         if node.kind in (clang.cindex.CursorKind.CLASS_DECL,
                          clang.cindex.CursorKind.CLASS_TEMPLATE,
                          clang.cindex.CursorKind.STRUCT_DECL):
@@ -206,11 +203,17 @@ class CppAst(CppAstWalker):
             self._in_function = True
 
         parents = node_parents(node)
-        # print format_parents(parents),
-        # print '{}<{}> (line={} col={})'.format(name,
-                                               # trimClangNodeName(node.kind),
-                                               # node.location.line,
-                                               # node.location.column)
+        if self._debug_output:
+            print node.spelling,
+            super(CppAst, self).visitNode(node, level)
+            print format_parents(parents),
+            print '{}<{}> ({}, line={} col={})'.format(node.spelling,
+                                                       trimClangNodeName(node.kind),
+                                                       None if not
+                                                       node.location.file else
+                                                       node.location.file.name,
+                                                       node.location.line,
+                                                       node.location.column)
 
         if node.kind is clang.cindex.CursorKind.CXX_ACCESS_SPEC_DECL:
             self._access_specifier = node.access_specifier
