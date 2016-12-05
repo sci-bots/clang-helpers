@@ -175,6 +175,7 @@ class CppAst(CppAstWalker):
         self._in_function = False
         self._parents = []
         self.root = OrderedDict()
+        self._debug_output = False
 
     def leaveNode(self, node, level):
         # super(CppAst, self).leaveNode(node, level)
@@ -187,6 +188,9 @@ class CppAst(CppAstWalker):
             self._access_specifier = 'PROTECTED'
         if node.kind is clang.cindex.CursorKind.FUNCTION_DECL:
             self._in_function = False
+        if self._debug_output:
+            print node.spelling,
+            super(CppAst, self).leaveNode(node, level)
 
     def visitNode(self, node, level):
         # super(CppAst, self).visitNode(node, level)
@@ -199,11 +203,17 @@ class CppAst(CppAstWalker):
             self._in_function = True
 
         parents = node_parents(node)
-        # print format_parents(parents),
-        # print '{}<{}> (line={} col={})'.format(name,
-                                               # trimClangNodeName(node.kind),
-                                               # node.location.line,
-                                               # node.location.column)
+        if self._debug_output:
+            print node.spelling,
+            super(CppAst, self).visitNode(node, level)
+            print format_parents(parents),
+            print '{}<{}> ({}, line={} col={})'.format(node.spelling,
+                                                       trimClangNodeName(node.kind),
+                                                       None if not
+                                                       node.location.file else
+                                                       node.location.file.name,
+                                                       node.location.line,
+                                                       node.location.column)
 
         if node.kind is clang.cindex.CursorKind.CXX_ACCESS_SPEC_DECL:
             self._access_specifier = node.access_specifier
@@ -228,6 +238,7 @@ class CppAst(CppAstWalker):
             translation_units_i[node.displayname] = node_obj
             return
 
+        parent_objs = []
         for parent_node_i in parents:
             if parent_node_i.kind is clang.cindex.CursorKind.TRANSLATION_UNIT:
                 # Top-level parent.
@@ -238,6 +249,7 @@ class CppAst(CppAstWalker):
                 parent = parent['classes'][parent_node_i.spelling]
             elif parent_node_i.kind in (clang.cindex.CursorKind.NAMESPACE, ):
                 parent = parent['namespaces'][parent_node_i.spelling]
+            parent_objs.append(parent)
 
         if node.kind in (clang.cindex.CursorKind.CLASS_DECL,
                          clang.cindex.CursorKind.CLASS_TEMPLATE,
