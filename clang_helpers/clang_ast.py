@@ -235,6 +235,7 @@ class CppAst(CppAstWalker):
             translation_units_i[node.displayname] = node_obj
             return
 
+        parent_objs = []
         for parent_node_i in parents:
             if parent_node_i.kind is clang.cindex.CursorKind.TRANSLATION_UNIT:
                 # Top-level parent.
@@ -245,6 +246,7 @@ class CppAst(CppAstWalker):
                 parent = parent['classes'][parent_node_i.spelling]
             elif parent_node_i.kind in (clang.cindex.CursorKind.NAMESPACE, ):
                 parent = parent['namespaces'][parent_node_i.spelling]
+            parent_objs.append(parent)
 
         if node.kind in (clang.cindex.CursorKind.CLASS_DECL,
                          clang.cindex.CursorKind.CLASS_TEMPLATE,
