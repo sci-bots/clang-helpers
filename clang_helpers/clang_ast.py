@@ -60,6 +60,47 @@ class DotOrderedDict(OrderedDict):
     __delattr__ = OrderedDict.__delitem__
 
 
+def extract_base_identifiers(class_node):
+    '''
+    Extract list of ``IDENTIFIER`` tokens in base specifier list.
+
+    Note
+    ----
+        Extracted list may contain ``IDENTIFIER`` tokens that are **not** class
+        names, e.g., preprocessor ``ifdef``, ``endif``  tokens.
+
+    Parameters
+    ----------
+    class_node : clang.cindex.Cursor
+        clang cursor referencing a C++ class declaration.
+
+    Returns
+    -------
+    list
+        List of ``IDENTIFIER`` tokens in base specifier list.
+    '''
+    processing = False
+
+    template_stack = []
+    base_specifiers = []
+
+    for t in class_node.get_tokens():
+        if t.spelling == ':':
+            processing = True
+            start = t.extent.start
+        if t.spelling == '<':
+            template_stack.append(t)
+        if t.spelling == '>':
+            template_stack.pop()
+        if processing and not template_stack and t.kind.name == 'IDENTIFIER':
+            base_specifiers.append(t)
+        if t.spelling == '{':
+            end = t.extent.start
+            break
+
+    return [t.spelling for t in base_specifiers]
+
+
 class CppAstWalker(object):
     @staticmethod
     def trimClangNodeName(nodeName):
