@@ -22,6 +22,25 @@ import pydash as py_
 from . import STD_INT_KIND
 
 
+def mergedicts(dict1, dict2):
+    # See [here][1].
+    #
+    # [1]: http://stackoverflow.com/questions/7204805/dictionaries-of-dictionaries-merge/7205107#7205107
+    for k in set(dict1.keys()).union(dict2.keys()):
+        if k in dict1 and k in dict2:
+            if isinstance(dict1[k], dict) and isinstance(dict2[k], dict):
+                yield (k, dict(mergedicts(dict1[k], dict2[k])))
+            else:
+                # If one of the values is not a dict, you can't continue merging it.
+                # Value from second dict overrides one in first and we move on.
+                yield (k, dict2[k])
+                # Alternatively, replace this with exception raiser to alert you of value conflicts
+        elif k in dict1:
+            yield (k, dict1[k])
+        else:
+            yield (k, dict2[k])
+
+
 class DotOrderedDict(OrderedDict):
     def __getattr__(self, attr):
         try:
@@ -230,6 +249,10 @@ class CppAst(CppAstWalker):
 
         if node.kind is clang.cindex.CursorKind.NAMESPACE:
             namespaces_i = parent.setdefault('namespaces', OrderedDict())
+            # Merge with existing namespaces object, since the same namespace
+            # may span multiple files.
+            node_obj = dict(mergedicts(namespaces_i.get(node.spelling, {}),
+                                       node_obj))
             namespaces_i[node.spelling] = node_obj
             return
 
@@ -296,7 +319,7 @@ class CppAst(CppAstWalker):
 
                 if comments_i:
                     node_obj['description'] = comments_i[0].spelling
-                members_i[node.spelling] = node_obj
+            members_i[node.spelling] = node_obj
 
 
 def parse_cpp_ast(input_file, *args, **kwargs):
