@@ -22,6 +22,23 @@ STD_INT_TYPE = OrderedDict([
     (TypeKind.VOID, None)])
 
 
+STD_INT_KIND = OrderedDict([
+    ('BOOL', 'bool'),
+    ('CHAR_S', 'int8_t'),
+    ('SCHAR', 'int8_t'),
+    ('CHAR_U', 'uint8_t'),
+    ('FLOAT', 'float'),
+    ('INT', 'int32_t'),
+    ('LONG', 'int32_t'),
+    ('LONGLONG', 'int64_t'),
+    ('SHORT', 'int16_t'),
+    ('UCHAR', 'uint8_t'),
+    ('UINT', 'uint32_t'),
+    ('ULONG', 'uint64_t'),
+    ('USHORT', 'uint16_t'),
+    ('VOID', None),
+])
+
 def _get_argument_type(arg):
     if arg.type.kind == TypeKind.POINTER:
         atom_type = arg.type.get_pointee().get_canonical().kind
