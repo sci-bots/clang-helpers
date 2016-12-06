@@ -485,12 +485,26 @@ def parse_cpp_ast(input_file, *args, **kwargs):
     extract_base_specifiers : bool, optional
         If ``True``, extract base specifiers for all classes from identifier
         tokens in base specifier list.
+    format : str, optional
+        If `'clang'`, maintain clang instances for types, cursors, etc.  The
+        resulting abstract syntax tree (AST) dictionary **cannot be
+        serialized**.
+
+        If `'json'`, convert instances of clang types to JSON-serializable
+        format (i.e., strings).
     *args : optional
         Additional arguments to pass to :meth:`clang.cindex.Index.parse`.
     **kwargs : optional
         Additional keyword arguments to pass to
         :meth:`clang.cindex.Index.parse`.
+
+    Returns
+    -------
+    dict
+        Abstract syntax tree (AST) dictionary in format specified by
+        :data:`format` parameter (i.e., either `clang` or `json` format).
     '''
+    format_ = kwargs.pop('format', 'clang')
     extract_base_specifiers = kwargs.pop('extract_base_specifiers')
     # If the line below fails , set Clang library path with
     # clang.cindex.Config.set_library_path
@@ -505,6 +519,8 @@ def parse_cpp_ast(input_file, *args, **kwargs):
     root = cpp_ast.root['translation_units'].values()[0]
     if extract_base_specifiers:
         cpp_ast._merge_all_base_specifiers(root)
+    if format_ == 'json':
+        _format_json_safe(root)
     return root
 
 
@@ -631,8 +647,7 @@ if __name__ == "__main__":
     include_args = ['-I{}'.format(p) for p in args.include]
     header_file = ph.path(sys.argv[1]).realpath()
 
-    cpp_ast_json = parse_cpp_ast(header_file, *include_args)
-    _format_json_safe(cpp_ast_json)
+    cpp_ast_json = parse_cpp_ast(header_file, *include_args, format='json')
     cpp_ast = parse_cpp_ast(header_file, *include_args)
 
     get_class = get_class_factory(cpp_ast)
