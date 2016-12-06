@@ -191,8 +191,8 @@ def resolve_typedef(typedef_node):
 
 def type_node(type_):
     type_i = resolve_typedef(type_)
-    result = {'type': type_i,
-              'typename': type_i.spelling,
+    result = {'underlying_type': type_i,
+              'type': type_,
               'kind': type_i.kind,
               'const': type_.is_const_qualified()}
 
@@ -200,7 +200,7 @@ def type_node(type_):
         result['pointer'] = True
         type_i = type_i.get_pointee()
         result['const'] = type_i.is_const_qualified()
-        result['type'] = resolve_typedef(type_i)
+        result['underlying_type'] = resolve_typedef(type_i)
         result['kind'] = result['type'].kind
     elif type_i.kind.name in ('CONSTANTARRAY', 'INCOMPLETEARRAY'):
         # Extract resolved element type and size from constant-sized array.
@@ -443,7 +443,8 @@ class CppAst(CppAstWalker):
             members_i = parent.setdefault('members', OrderedDict())
 
             result_type = resolve_typedef(node.result_type)
-            result_kind = result_type.kind.name
+            result_kind = STD_INT_KIND.get(result_type.kind.name,
+                                           result_type.kind.name)
 
             args = [{'name': a.displayname, 'node': a}
                     for a in node.get_arguments()]
@@ -455,9 +456,10 @@ class CppAst(CppAstWalker):
                 if result_type.spelling in parent.get('template_types', {}):
                     result_kind = '::'.join([parents[-1].displayname,
                                              result_type.spelling])
+            elif result_kind == 'RECORD':
+                result_kind = result_type.spelling
             node_obj.update({'result_type': result_kind,
                              'kind': node.type.kind,
-                             'typename': 'method',
                              'arguments': args})
 
             if node.is_definition():
@@ -514,7 +516,7 @@ def _format_json_safe(obj):
     if isinstance(obj, dict):
         for k, v in obj.items():
             if isinstance(v, clang.cindex.TypeKind):
-                obj[k] = STD_INT_KIND.get(v.name, v.name)
+                obj[k] = v.name
             elif isinstance(v, clang.cindex.AccessSpecifier):
                 obj[k] = v.name
             elif isinstance(v, clang.cindex.Cursor):
@@ -529,6 +531,8 @@ def _format_json_safe(obj):
                 obj[k] = v.spelling
             elif isinstance(v, (dict, list)):
                 _format_json_safe(v)
+        if 'type' in obj and 'kind' in obj:
+            obj['type'] = STD_INT_KIND.get(obj['kind'], obj['type'])
     elif isinstance(obj, list):
         remove_indexes = []
         for i, v in enumerate(obj):
