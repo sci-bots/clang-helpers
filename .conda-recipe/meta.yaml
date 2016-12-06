@@ -1,0 +1,32 @@
+# source will be downloaded prior to filling in jinja templates
+# Example assumes that this folder has setup.py in it
+source:
+  git_url: ../
+
+package:
+  name: clang-helpers
+  version: {{ GIT_DESCRIBE_TAG[1:] }}
+
+build:
+  # If this is a new build for the same version, increment the build
+  # number. If you do not include this key, it defaults to 0.
+  number: {{ GIT_DESCRIBE_NUMBER }}
+
+requirements:
+  build:
+    - clang
+    - future
+    - paver
+    - path_helpers
+    - pydash
+    - python
+
+  run:
+    - python
+    - clang
+    - path_helpers
+    - pydash
+
+about:
+  home: http://github.com/wheeler-microfluidics/microdrop
+  license: MIT

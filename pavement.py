@@ -14,9 +14,8 @@ setup(name='clang_helpers',
       author='Christian Fobel',
       url='https://github.com/wheeler-microfluidics/clang_helpers',
       license='GPL',
-      packages=['clang_helpers', 'clang_helpers.clang'],
-      package_data={'clang_helpers': ['libclang/*']},
-      install_requires=['clang>=3.8', 'path_helpers'])
+      packages=['clang_helpers'],
+      install_requires=['path_helpers', 'pydash'])
 
 
 @task
