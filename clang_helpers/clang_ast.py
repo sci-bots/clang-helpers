@@ -564,6 +564,52 @@ get_class_factory = lambda ast: py_.pipe(get_class_path,
                                          py_.curry(py_.get, arity=2)(ast))
 
 
+def public_members(cpp_ast_json, class_name):
+    '''
+    Parameters
+    ----------
+    cpp_ast_json : dict
+        Root of json-formatted C++ abstract syntax tree.
+    class_name : str
+        Class name, e.g., `foo::bar::FooBar`.
+
+    Returns
+    -------
+    list
+        List of publicly exposed members from specified class and all base
+        classes, sorted by member name.
+
+    Notes
+    -----
+        Multiple methods with the same signature are overridden based on order
+        of inheritance.
+
+        Behaviour for overloaded methods (i.e., multiple methods with different
+        call signatures) is currently **undefined**.
+    '''
+    get_class_json = get_class_factory(cpp_ast_json)
+    f_public_members = (py_.curry_right(py_.pick_by)
+                        (lambda v, k: (v.get('access_specifier') in
+                                       ('PUBLIC', None))))
+
+    def _public_members(class_name, members):
+        class_ = get_class_json(class_name)
+        class_members = [dict(mergedicts({'class': class_name, 'name': name_i},
+                                         method_i))
+                         for name_i, method_i in
+                         f_public_members(class_.get('members', {}))
+                         .iteritems()]
+        members.extend(sorted(class_members, key=lambda v: v['name']))
+
+        for name_i, base_i in reversed(class_.get('base_specifiers', {})
+                                       .items()):
+             if base_i.get('access_specifier') in (None, 'PUBLIC'):
+                _public_members(name_i, members)
+    members = []
+    _public_members(class_name, members)
+    return sorted(py_.uniq(members, 'name'), key=lambda v: v['name'])
+
+
 def parse_args(args=None):
     '''Parses arguments, returns (options, args).'''
     from argparse import ArgumentParser
