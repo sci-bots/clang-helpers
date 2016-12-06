@@ -60,6 +60,59 @@ class DotOrderedDict(OrderedDict):
     __delattr__ = OrderedDict.__delitem__
 
 
+def extract_base_identifiers(class_node):
+    '''
+    Extract list of ``(IDENTIFIER, specifier_dict)`` pairs, where each
+    ``IDENTIFIER`` is a token in the base specifier list of the specified
+    class.
+
+    Note
+    ----
+        Extracted list may contain ``IDENTIFIER`` tokens that are **not** class
+        names, e.g., preprocessor ``ifdef``, ``endif``  tokens.
+
+    Parameters
+    ----------
+    class_node : clang.cindex.Cursor
+        clang cursor referencing a C++ class declaration.
+
+    Returns
+    -------
+    list
+        List of ``IDENTIFIER`` tokens in base specifier list.
+    '''
+    processing = False
+
+    template_stack = []
+    base_specifiers = []
+    previous_token = None
+
+    for t in class_node.get_tokens():
+        if t.spelling == ':':
+            processing = True
+            start = t.extent.start
+        if t.spelling == '<':
+            template_stack.append(t)
+        if t.spelling == '>':
+            template_stack.pop()
+        if processing and not template_stack and t.kind.name == 'IDENTIFIER':
+            node_obj = {'token': t}
+            if previous_token.spelling in ('public', 'private', 'protected'):
+                node_obj['access_specifier'] = getattr(clang.cindex
+                                                       .AccessSpecifier,
+                                                       previous_token.spelling
+                                                       .upper())
+            else:
+                node_obj['access_specifier'] = 'PROTECTED'
+            base_specifiers.append((t.spelling, node_obj))
+        if t.spelling == '{':
+            end = t.extent.start
+            break
+        previous_token = t
+
+    return base_specifiers
+
+
 class CppAstWalker(object):
     @staticmethod
     def trimClangNodeName(nodeName):
@@ -176,6 +229,93 @@ class CppAst(CppAstWalker):
         self._parents = []
         self.root = OrderedDict()
         self._debug_output = False
+
+    def get_class(self, class_name):
+        '''
+        Look up class object by name, e.g., `foo::bar::FooBar`.
+        '''
+        f_get_class = get_class_factory(self.root['translation_units']
+                                        .values()[0])
+        return f_get_class(class_name)
+
+    def _class_obj(self, class_name):
+        class_ = self.get_class(class_name)
+        if class_ is None:
+            return {}
+        else:
+            node = class_['node']
+            return {'class_node': node, 'type': node.type}
+
+    def _extract_base_specifiers(self, class_node):
+        '''
+        Construct base specifier objects from extracted identifier tokens in
+        base specifier list of specified class.
+
+        Parameters
+        ----------
+        class_node : clang.cindex.Cursor
+            Cursor to class node in clang AST.
+
+        Returns
+        -------
+        OrderedDict
+            Mapping from class names to corresponding base specifier objects.
+        '''
+        base_identifiers = extract_base_identifiers(class_node)
+        return OrderedDict(filter(lambda v: 'class_node' in v[1],
+                           [(name, dict(mergedicts(b, self._class_obj(name))))
+                            for name, b in base_identifiers]))
+
+    def _merge_base_specifiers(self, class_, inplace=False):
+        '''
+        Parameters
+        ----------
+        class_ : dict
+            Class object, possibly containing an item with the key
+            ``'base_specifiers'``.
+        inplace : bool, optional
+            If ``True``, directly modify ``'base_specifiers'`` item on
+            :data:`class_`.
+
+        Returns
+        -------
+        None or OrderedDict
+            If :data:`inplace` is set to ``True``, return ``None``.
+
+            Otherwise, return base specifiers extracted from tokens merged with
+            with base specifiers from clang AST.
+        '''
+        token_base_specifiers = self._extract_base_specifiers(class_['node'])
+        base_specifiers = class_.get('base_specifiers', OrderedDict())
+
+        items = []
+        token_base_iter = token_base_specifiers.iteritems()
+
+        for i, (name_i, base_i) in enumerate(base_specifiers.iteritems()):
+            for name_j, base_j in token_base_iter:
+                if name_j != name_i:
+                    items.append((name_j, base_j))
+                else:
+                    break
+            items.append((name_i, base_i))
+
+        result = OrderedDict(items)
+        if inplace:
+            class_['base_specifiers'] = result
+        else:
+            return result
+
+    def _merge_all_base_specifiers(self, obj):
+        if isinstance(obj, dict):
+            for k, v in obj.iteritems():
+                if k == 'classes':
+                    for name_i, class_i in v.iteritems():
+                        self._merge_base_specifiers(class_i, inplace=True)
+                else:
+                    self._merge_all_base_specifiers(v)
+        elif isinstance(obj, list):
+            for v in obj:
+                self._merge_all_base_specifiers(v)
 
     def leaveNode(self, node, level):
         # super(CppAst, self).leaveNode(node, level)
@@ -340,12 +480,16 @@ def parse_cpp_ast(input_file, *args, **kwargs):
     ----------
     input_file : str
         Input file path.
+    extract_base_specifiers : bool, optional
+        If ``True``, extract base specifiers for all classes from identifier
+        tokens in base specifier list.
     *args : optional
         Additional arguments to pass to :meth:`clang.cindex.Index.parse`.
     **kwargs : optional
         Additional keyword arguments to pass to
         :meth:`clang.cindex.Index.parse`.
     '''
+    extract_base_specifiers = kwargs.pop('extract_base_specifiers')
     # If the line below fails , set Clang library path with
     # clang.cindex.Config.set_library_path
     clang_index = clang.cindex.Index.create()
@@ -355,7 +499,11 @@ def parse_cpp_ast(input_file, *args, **kwargs):
 
     cpp_ast = CppAst()
     cpp_ast.walkAST(root_node, 0)
-    return cpp_ast.root['translation_units'].values()[0]
+
+    root = cpp_ast.root['translation_units'].values()[0]
+    if extract_base_specifiers:
+        cpp_ast._merge_all_base_specifiers(root)
+    return root
 
 
 def _format_json_safe(obj):
