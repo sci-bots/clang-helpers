@@ -489,16 +489,16 @@ class CppAst(CppAstWalker):
                              'arguments': args})
 
             if node.is_definition():
-                comments_i = []
                 for child_i in node.get_children():
                     if child_i.kind is clang.cindex.CursorKind.COMPOUND_STMT:
-                        comments_i = [t for t in child_i.get_tokens()
-                                      if t.kind is
-                                      clang.cindex.TokenKind.COMMENT]
+                        tokens = list(child_i.get_tokens())
+                        # Token 0 is the opening bracket of the compound
+                        # statement.
+                        # If the next token is a comment, store the comment as
+                        # a description of the function.
+                        if tokens[1].kind is clang.cindex.TokenKind.COMMENT:
+                            node_obj['description'] = tokens[1].spelling
                         break
-
-                if comments_i:
-                    node_obj['description'] = comments_i[0].spelling
             members_i[node.spelling] = node_obj
 
 
