@@ -194,7 +194,9 @@ def type_node(type_):
     result = {'underlying_type': type_i,
               'type': type_,
               'kind': type_i.kind,
-              'const': type_.is_const_qualified()}
+              'const': type_.is_const_qualified(),
+              'volatile': type_.is_volatile_qualified(),
+              'restrict': type_.is_restrict_qualified()}
 
     if type_i.kind.name == 'POINTER':
         result['pointer'] = True
