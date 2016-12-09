@@ -226,6 +226,7 @@ class CppAst(CppAstWalker):
         self._in_class = False
         self._in_method = False
         self._in_function = False
+        self._in_typedef = False
         self._parents = []
         self.root = OrderedDict()
         self._debug_output = False
@@ -328,6 +329,9 @@ class CppAst(CppAstWalker):
             self._access_specifier = 'PROTECTED'
         if node.kind is clang.cindex.CursorKind.FUNCTION_DECL:
             self._in_function = False
+        if node.kind is clang.cindex.CursorKind.TYPEDEF_DECL:
+            self._in_typedef = False
+            self._active_typedef = None
         if self._debug_output:
             print node.spelling,
             super(CppAst, self).leaveNode(node, level)
@@ -337,8 +341,12 @@ class CppAst(CppAstWalker):
         if node.kind in (clang.cindex.CursorKind.CLASS_DECL,
                          clang.cindex.CursorKind.CLASS_TEMPLATE,
                          clang.cindex.CursorKind.STRUCT_DECL):
-            self._access_specifier = 'PROTECTED'
             self._in_class = True
+        if node.kind in (clang.cindex.CursorKind.CLASS_DECL,
+                         clang.cindex.CursorKind.CLASS_TEMPLATE):
+            self._access_specifier = 'PROTECTED'
+        elif node.kind is clang.cindex.CursorKind.STRUCT_DECL:
+            self._access_specifier = 'PUBLIC'
         if node.kind is clang.cindex.CursorKind.FUNCTION_DECL:
             self._in_function = True
 
@@ -386,7 +394,10 @@ class CppAst(CppAstWalker):
             elif parent_node_i.kind in (clang.cindex.CursorKind.CLASS_DECL,
                                         clang.cindex.CursorKind.CLASS_TEMPLATE,
                                         clang.cindex.CursorKind.STRUCT_DECL):
-                parent = parent['classes'][parent_node_i.spelling]
+                if parent_node_i.spelling:
+                    parent = parent['classes'][parent_node_i.spelling]
+                else:
+                    parent = parent['anonymous_classes'][-1]
             elif parent_node_i.kind in (clang.cindex.CursorKind.NAMESPACE, ):
                 parent = parent['namespaces'][parent_node_i.spelling]
             parent_objs.append(parent)
@@ -394,9 +405,19 @@ class CppAst(CppAstWalker):
         if node.kind in (clang.cindex.CursorKind.CLASS_DECL,
                          clang.cindex.CursorKind.CLASS_TEMPLATE,
                          clang.cindex.CursorKind.STRUCT_DECL):
-            classes_i = parent.setdefault('classes', OrderedDict())
-            classes_i[node.spelling] = node_obj
-            self._class = classes_i[node.spelling]
+            if self._in_typedef:
+                # Processing `typedef struct`, so use `typedef` name instead.
+                name = self._active_typedef.spelling
+            else:
+                name = node.spelling
+            if name:
+                classes_i = parent.setdefault('classes', OrderedDict())
+                classes_i[name] = node_obj
+                self._class = node_obj
+            else:
+                classes_i = parent.setdefault('anonymous_classes', [])
+                classes_i.append(node_obj)
+                self._class = node_obj
             return
 
         if node.kind is clang.cindex.CursorKind.NAMESPACE:
@@ -415,6 +436,8 @@ class CppAst(CppAstWalker):
             return
 
         if node.kind is clang.cindex.CursorKind.TYPEDEF_DECL:
+            self._in_typedef = True
+            self._active_typedef = node
             typedefs_i = parent.setdefault('typedefs', OrderedDict())
 
             type_i = resolve_typedef(node)
@@ -426,6 +449,7 @@ class CppAst(CppAstWalker):
         node_obj['name'] = node.spelling
         if self._in_class:
             node_obj['access_specifier'] = self._access_specifier
+            parent = self._class
         if ((node.kind is clang.cindex.CursorKind.VAR_DECL) and
             (not self._in_function and (not self._in_class or not
                                         self._in_method))):
@@ -438,8 +462,10 @@ class CppAst(CppAstWalker):
             members_i = parent.setdefault('members', OrderedDict())
             node_obj.update(type_node(node.type))
             members_i[node.spelling] = node_obj
-        elif node.kind is clang.cindex.CursorKind.CXX_METHOD:
-            self._in_method = True
+        elif node.kind in (clang.cindex.CursorKind.CXX_METHOD,
+                           clang.cindex.CursorKind.FUNCTION_DECL):
+            if node.kind is clang.cindex.CursorKind.CXX_METHOD:
+                self._in_method = True
             members_i = parent.setdefault('members', OrderedDict())
 
             result_type = resolve_typedef(node.result_type)
