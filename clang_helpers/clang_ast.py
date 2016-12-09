@@ -90,7 +90,6 @@ def extract_base_identifiers(class_node):
     for t in class_node.get_tokens():
         if t.spelling == ':':
             processing = True
-            start = t.extent.start
         if t.spelling == '<':
             template_stack.append(t)
         if t.spelling == '>':
@@ -106,7 +105,6 @@ def extract_base_identifiers(class_node):
                 node_obj['access_specifier'] = 'PROTECTED'
             base_specifiers.append((t.spelling, node_obj))
         if t.spelling == '{':
-            end = t.extent.start
             break
         previous_token = t
 
@@ -222,7 +220,14 @@ def trimClangNodeName(nodeName):
 
 
 class CppAst(CppAstWalker):
-    def __init__(self):
+    def __init__(self, add_index=False):
+        '''
+        Parameters
+        ----------
+        add_index : bool, optional
+            If ``True``, add an ``'index'`` property to each node in the AST
+            according to the order the nodes are processed in the parsing walk.
+        '''
         super(CppAst, self).__init__()
         self._access_specifier = None
         self._in_class = False
@@ -232,6 +237,8 @@ class CppAst(CppAstWalker):
         self._parents = []
         self.root = OrderedDict()
         self._debug_output = False
+        self.count = 0
+        self.add_index = add_index
 
     def get_class(self, class_name):
         '''
@@ -339,6 +346,7 @@ class CppAst(CppAstWalker):
             super(CppAst, self).leaveNode(node, level)
 
     def visitNode(self, node, level):
+        self.count += 1
         # super(CppAst, self).visitNode(node, level)
         if node.kind in (clang.cindex.CursorKind.CLASS_DECL,
                          clang.cindex.CursorKind.CLASS_TEMPLATE,
@@ -354,7 +362,7 @@ class CppAst(CppAstWalker):
 
         parents = node_parents(node)
         if self._debug_output:
-            print node.spelling,
+            print self.count, '*' * level, node.spelling,
             super(CppAst, self).visitNode(node, level)
             print format_parents(parents),
             print '{}<{}> ({}, line={} col={})'.format(node.spelling,
@@ -381,6 +389,8 @@ class CppAst(CppAstWalker):
         parent = self.root
 
         node_obj = {'node': node}
+        if self.add_index:
+            node_obj['count'] = self.count
 
         if node.kind is clang.cindex.CursorKind.TRANSLATION_UNIT:
             translation_units_i = parent.setdefault('translation_units',
@@ -510,6 +520,9 @@ def parse_cpp_ast(input_file, *args, **kwargs):
     ----------
     input_file : str
         Input file path.
+    add_index : bool, optional
+        If ``True``, add an ``'index'`` property to each node in the AST
+        according to the order the nodes are processed in the parsing walk.
     extract_base_specifiers : bool, optional
         If ``True``, extract base specifiers for all classes from identifier
         tokens in base specifier list.
@@ -532,8 +545,9 @@ def parse_cpp_ast(input_file, *args, **kwargs):
         Abstract syntax tree (AST) dictionary in format specified by
         :data:`format` parameter (i.e., either `clang` or `json` format).
     '''
-    format_ = kwargs.pop('format', 'clang')
+    add_index = kwargs.pop('add_index', False)
     extract_base_specifiers = kwargs.pop('extract_base_specifiers', False)
+    format_ = kwargs.pop('format', 'clang')
     # If the line below fails , set Clang library path with
     # clang.cindex.Config.set_library_path
     clang_index = clang.cindex.Index.create()
@@ -541,7 +555,7 @@ def parse_cpp_ast(input_file, *args, **kwargs):
                                         **kwargs)
     root_node = translationUnit.cursor
 
-    cpp_ast = CppAst()
+    cpp_ast = CppAst(add_index=add_index)
     cpp_ast.walkAST(root_node, 0)
 
     root = cpp_ast.root['translation_units'].values()[0]
