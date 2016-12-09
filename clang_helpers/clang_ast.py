@@ -505,7 +505,7 @@ def parse_cpp_ast(input_file, *args, **kwargs):
         :data:`format` parameter (i.e., either `clang` or `json` format).
     '''
     format_ = kwargs.pop('format', 'clang')
-    extract_base_specifiers = kwargs.pop('extract_base_specifiers')
+    extract_base_specifiers = kwargs.pop('extract_base_specifiers', False)
     # If the line below fails , set Clang library path with
     # clang.cindex.Config.set_library_path
     clang_index = clang.cindex.Index.create()
