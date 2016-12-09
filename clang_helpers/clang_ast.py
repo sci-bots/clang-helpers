@@ -485,7 +485,7 @@ class CppAst(CppAstWalker):
             elif result_kind == 'RECORD':
                 result_kind = result_type.spelling
             node_obj.update({'result_type': result_kind,
-                             'kind': node.type.kind,
+                             'kind': node.kind,
                              'arguments': args})
 
             if node.is_definition():
@@ -557,7 +557,7 @@ def _format_json_safe(obj):
     '''
     if isinstance(obj, dict):
         for k, v in obj.items():
-            if isinstance(v, clang.cindex.TypeKind):
+            if isinstance(v, (clang.cindex.TypeKind, clang.cindex.CursorKind)):
                 obj[k] = v.name
             elif isinstance(v, clang.cindex.AccessSpecifier):
                 obj[k] = v.name
