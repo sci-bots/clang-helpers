@@ -562,11 +562,14 @@ def _format_json_safe(obj):
             elif isinstance(v, clang.cindex.AccessSpecifier):
                 obj[k] = v.name
             elif isinstance(v, clang.cindex.Cursor):
-                obj['location'] = dict(zip(['file', 'line', 'column'],
+                f_extent = lambda marker: dict([(attr, getattr(marker, attr))
+                                               for attr in ['line',
+                                                            'column']])
+                obj['location'] = dict(zip(['file', 'start', 'end'],
                                             (v.location.file.name
                                              if v.location.file else None,
-                                             v.location.line,
-                                             v.location.column)))
+                                             f_extent(v.extent.start),
+                                             f_extent(v.extent.end))))
                 obj['name'] = v.spelling
                 del obj[k]
             elif isinstance(v, clang.cindex.Type):
