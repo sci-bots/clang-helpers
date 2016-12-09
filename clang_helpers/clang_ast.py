@@ -478,6 +478,7 @@ class CppAst(CppAstWalker):
                            clang.cindex.CursorKind.FUNCTION_DECL):
             if node.kind is clang.cindex.CursorKind.CXX_METHOD:
                 self._in_method = True
+                node_obj['const'] = node.is_const_method()
             members_i = parent.setdefault('members', OrderedDict())
 
             result_type = resolve_typedef(node.result_type)
