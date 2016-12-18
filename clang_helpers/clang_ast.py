@@ -595,6 +595,9 @@ def _format_json_safe(obj):
                 _format_json_safe(v)
         if 'type' in obj and 'kind' in obj:
             obj['type'] = STD_INT_KIND.get(obj['kind'], obj['type'])
+        if 'element_type' in obj and 'element_kind' in obj:
+            obj['element_type'] = STD_INT_KIND.get(obj['element_kind'],
+                                                   obj['element_type'])
     elif isinstance(obj, list):
         remove_indexes = []
         for i, v in enumerate(obj):
