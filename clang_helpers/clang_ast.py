@@ -200,6 +200,7 @@ def type_node(type_):
         result['pointer'] = True
         type_i = type_i.get_pointee()
         result['const'] = type_i.is_const_qualified()
+        result['pointee_type'] = type_i
         result['underlying_type'] = resolve_typedef(type_i)
         result['kind'] = result['type'].kind
     elif type_i.kind.name in ('CONSTANTARRAY', 'INCOMPLETEARRAY'):
