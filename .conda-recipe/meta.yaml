@@ -28,5 +28,5 @@ requirements:
     - pydash
 
 about:
-  home: http://github.com/wheeler-microfluidics/microdrop
+  home: http://github.com/wheeler-microfluidics/clang-helpers
   license: MIT
