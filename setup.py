@@ -4,14 +4,12 @@ from __future__ import absolute_import
 from __future__ import print_function
 
 from setuptools import setup
-import sys
 
-sys.path.insert(0, '.')
-import version
-
+import versioneer
 
 setup(name='clang_helpers',
-      version=version.getVersion(),
+      version=versioneer.get_version(),
+      cmdclass=versioneer.get_cmdclass(),
       description='High-level API using `clang` module to provide static C++ '
       'class introspection.',
       keywords='c++ clang introspection',

@@ -1,3 +1,5 @@
 include RELEASE-VERSION
 include version.py
 include setup.py
+include versioneer.py
+include clang_helpers/_version.py

@@ -4,6 +4,10 @@ from clang.cindex import CursorKind, TypeKind
 import clang
 import clang.cindex
 
+from ._version import get_versions
+__version__ = get_versions()['version']
+del get_versions
+
 
 STD_INT_TYPE = OrderedDict([
     (TypeKind.BOOL, 'bool'),
