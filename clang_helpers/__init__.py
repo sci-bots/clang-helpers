@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 from collections import OrderedDict
 
 from clang.cindex import CursorKind, TypeKind
@@ -43,6 +45,7 @@ STD_INT_KIND = OrderedDict([
     ('VOID', None),
 ])
 
+
 def _get_argument_type(arg):
     if arg.type.kind == TypeKind.POINTER:
         atom_type = arg.type.get_pointee().get_canonical().kind
@@ -85,10 +88,9 @@ def extract_class_declarations(root_cursor, include_templates=True):
                             (include_templates and
                             (n.kind == CursorKind.CLASS_TEMPLATE))])
 
-
     def _extract_classes(root_cursor, classes, parents=None,
                          include_templates=True):
-        classes_ = _extract_classes_level(root_cursor).iteritems()
+        classes_ = iter(_extract_classes_level(root_cursor).items())
         if parents is None:
             parents = tuple()
         classes.update(OrderedDict([('::'.join([p.displayname

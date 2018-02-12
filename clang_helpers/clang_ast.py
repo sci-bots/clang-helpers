@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-#
-#
 # Understanding CLang AST : http://clang.llvm.org/docs/IntroductionToTheClangAST.html
 #
 # Requirements
@@ -10,8 +8,8 @@
 # 2. pip install clang
 #
 # Note : Make sure that your Python runtime and Clang are same architecture
-#
-#Core
+from __future__ import print_function
+
 from collections import OrderedDict
 import sys
 
@@ -31,10 +29,12 @@ def mergedicts(dict1, dict2):
             if isinstance(dict1[k], dict) and isinstance(dict2[k], dict):
                 yield (k, dict(mergedicts(dict1[k], dict2[k])))
             else:
-                # If one of the values is not a dict, you can't continue merging it.
-                # Value from second dict overrides one in first and we move on.
+                # If one of the values is not a dict, you can't continue
+                # merging it. Value from second dict overrides one in first and
+                # we move on.
                 yield (k, dict2[k])
-                # Alternatively, replace this with exception raiser to alert you of value conflicts
+                # Alternatively, replace this with exception raiser to alert
+                # you of value conflicts
         elif k in dict1:
             yield (k, dict1[k])
         else:
@@ -121,11 +121,11 @@ class CppAstWalker(object):
     @staticmethod
     def printASTNode(node, level, exit=False):
         for i in range(0, level):
-            print '  ',
+            print('  ', end=' ')
         if exit is True:
-            print ("Exiting " + CppAstWalker.trimClangNodeName(node.kind))
+            print("Exiting " + CppAstWalker.trimClangNodeName(node.kind))
         else:
-            print CppAstWalker.trimClangNodeName(node.kind)
+            print(CppAstWalker.trimClangNodeName(node.kind))
 
     def visitNode(self, node, level):
         CppAstWalker.printASTNode(node, level)
@@ -177,10 +177,10 @@ def resolve_typedef(typedef_node):
     '''
     if typedef_node.kind is clang.cindex.TypeKind.TYPEDEF:
         typedef_node = typedef_node.get_declaration()
-    if not typedef_node.kind is clang.cindex.CursorKind.TYPEDEF_DECL:
+    if typedef_node.kind is not clang.cindex.CursorKind.TYPEDEF_DECL:
         return typedef_node
 
-    #Find underlying type of (possibly nested) typedef.
+    # Find underlying type of (possibly nested) typedef.
     type_i = typedef_node.underlying_typedef_type
     while type_i.kind == clang.cindex.TypeKind.TYPEDEF:
         type_i = type_i.get_declaration().underlying_typedef_type
@@ -245,8 +245,8 @@ class CppAst(CppAstWalker):
         '''
         Look up class object by name, e.g., `foo::bar::FooBar`.
         '''
-        f_get_class = get_class_factory(self.root['translation_units']
-                                        .values()[0])
+        f_get_class = get_class_factory(list(self.root['translation_units']
+                                             .values())[0])
         return f_get_class(class_name)
 
     def _class_obj(self, class_name):
@@ -273,9 +273,10 @@ class CppAst(CppAstWalker):
             Mapping from class names to corresponding base specifier objects.
         '''
         base_identifiers = extract_base_identifiers(class_node)
-        return OrderedDict(filter(lambda v: 'class_node' in v[1],
-                           [(name, dict(mergedicts(b, self._class_obj(name))))
-                            for name, b in base_identifiers]))
+        return OrderedDict([v for v in
+                            [(name, dict(mergedicts(b, self._class_obj(name))))
+                             for name, b in base_identifiers]
+                            if 'class_node' in v[1]])
 
     def _merge_base_specifiers(self, class_, inplace=False):
         '''
@@ -300,9 +301,9 @@ class CppAst(CppAstWalker):
         base_specifiers = class_.get('base_specifiers', OrderedDict())
 
         items = []
-        token_base_iter = token_base_specifiers.iteritems()
+        token_base_iter = iter(token_base_specifiers.items())
 
-        for i, (name_i, base_i) in enumerate(base_specifiers.iteritems()):
+        for i, (name_i, base_i) in enumerate(base_specifiers.items()):
             for name_j, base_j in token_base_iter:
                 if name_j != name_i:
                     items.append((name_j, base_j))
@@ -318,9 +319,9 @@ class CppAst(CppAstWalker):
 
     def _merge_all_base_specifiers(self, obj):
         if isinstance(obj, dict):
-            for k, v in obj.iteritems():
+            for k, v in obj.items():
                 if k == 'classes':
-                    for name_i, class_i in v.iteritems():
+                    for name_i, class_i in v.items():
                         self._merge_base_specifiers(class_i, inplace=True)
                 else:
                     self._merge_all_base_specifiers(v)
@@ -343,7 +344,7 @@ class CppAst(CppAstWalker):
             self._in_typedef = False
             self._active_typedef = None
         if self._debug_output:
-            print node.spelling,
+            print(node.spelling, end=' ')
             super(CppAst, self).leaveNode(node, level)
 
     def visitNode(self, node, level):
@@ -363,16 +364,14 @@ class CppAst(CppAstWalker):
 
         parents = node_parents(node)
         if self._debug_output:
-            print self.count, '*' * level, node.spelling,
+            print(self.count, '*' * level, node.spelling, end=' ')
             super(CppAst, self).visitNode(node, level)
-            print format_parents(parents),
-            print '{}<{}> ({}, line={} col={})'.format(node.spelling,
-                                                       trimClangNodeName(node.kind),
-                                                       None if not
-                                                       node.location.file else
-                                                       node.location.file.name,
-                                                       node.location.line,
-                                                       node.location.column)
+            print(format_parents(parents), end=' ')
+            print('{}<{}> ({}, line={} col={})'
+                  .format(node.spelling, trimClangNodeName(node.kind),
+                          None if not node.location.file
+                          else node.location.file.name, node.location.line,
+                          node.location.column))
 
         if node.kind is clang.cindex.CursorKind.CXX_ACCESS_SPEC_DECL:
             self._access_specifier = node.access_specifier
@@ -444,7 +443,7 @@ class CppAst(CppAstWalker):
 
         if node.kind is clang.cindex.CursorKind.TEMPLATE_TYPE_PARAMETER:
             template_types_i = parent.setdefault('template_types',
-                                                  OrderedDict())
+                                                 OrderedDict())
             template_types_i[node.displayname] = node_obj
             return
 
@@ -560,7 +559,7 @@ def parse_cpp_ast(input_file, *args, **kwargs):
     cpp_ast = CppAst(add_index=add_index)
     cpp_ast.walkAST(root_node, 0)
 
-    root = cpp_ast.root['translation_units'].values()[0]
+    root = list(cpp_ast.root['translation_units'].values())[0]
     if extract_base_specifiers:
         cpp_ast._merge_all_base_specifiers(root)
     if format_ == 'json':
@@ -574,20 +573,20 @@ def _format_json_safe(obj):
     json-serializable.
     '''
     if isinstance(obj, dict):
-        for k, v in obj.items():
+        for k, v in list(obj.items()):
             if isinstance(v, (clang.cindex.TypeKind, clang.cindex.CursorKind)):
                 obj[k] = v.name
             elif isinstance(v, clang.cindex.AccessSpecifier):
                 obj[k] = v.name
             elif isinstance(v, clang.cindex.Cursor):
-                f_extent = lambda marker: dict([(attr, getattr(marker, attr))
-                                               for attr in ['line',
-                                                            'column']])
-                obj['location'] = dict(zip(['file', 'start', 'end'],
+                def f_extent(marker):
+                    return dict([(attr, getattr(marker, attr))
+                                 for attr in ['line', 'column']])
+                obj['location'] = dict(list(zip(['file', 'start', 'end'],
                                             (v.location.file.name
                                              if v.location.file else None,
                                              f_extent(v.extent.start),
-                                             f_extent(v.extent.end))))
+                                             f_extent(v.extent.end)))))
                 obj['name'] = v.spelling
                 del obj[k]
             elif isinstance(v, clang.cindex.Type):
@@ -613,10 +612,11 @@ def _format_json_safe(obj):
 def show_location(location, stream=sys.stdout):
     with open(location['file'], 'r') as source:
         line = source.readlines()[location['line']]
-        print >> stream, '# {file} line {line} col {column}'.format(**location)
-        print >> stream, ''
-        print >> stream, line.strip()
-        print >> stream, ' ' * (location['column'] - 1) + '^'
+        print('# {file} line {line} col {column}'.format(**location),
+              file=stream)
+        print('', file=stream)
+        print(line.strip(), file=stream)
+        print(' ' * (location['column'] - 1) + '^', file=stream)
 
 
 def get_class_path(class_str):
@@ -626,8 +626,8 @@ def get_class_path(class_str):
 
 
 # Generate function to look up class by name, e.g., `foo::bar::FooBar`.
-get_class_factory = lambda ast: py_.pipe(get_class_path,
-                                         py_.curry(py_.get, arity=2)(ast))
+def get_class_factory(ast):
+    return py_.pipe(get_class_path, py_.curry(py_.get, arity=2)(ast))
 
 
 def public_members(cpp_ast_json, class_name):
@@ -663,13 +663,12 @@ def public_members(cpp_ast_json, class_name):
         class_members = [dict(mergedicts({'class': class_name, 'name': name_i},
                                          method_i))
                          for name_i, method_i in
-                         f_public_members(class_.get('members', {}))
-                         .iteritems()]
+                         f_public_members(class_.get('members', {})).items()]
         members.extend(sorted(class_members, key=lambda v: v['name']))
 
-        for name_i, base_i in reversed(class_.get('base_specifiers', {})
-                                       .items()):
-             if base_i.get('access_specifier') in (None, 'PUBLIC'):
+        for name_i, base_i in reversed(list(class_.get('base_specifiers',
+                                                       {}).items())):
+            if base_i.get('access_specifier') in (None, 'PUBLIC'):
                 _public_members(name_i, members)
     members = []
     _public_members(class_name, members)
