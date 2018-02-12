@@ -1,3 +1,8 @@
+{% if GIT_DESCRIBE_NUMBER > '0' %}
+{% set GIT_VERSION = GIT_DESCRIBE_TAG[1:] + '.post' + GIT_DESCRIBE_NUMBER %}
+{% else %}
+{% set GIT_VERSION = GIT_DESCRIBE_TAG[1:] %}
+{% endif %}
 # source will be downloaded prior to filling in jinja templates
 # Example assumes that this folder has setup.py in it
 source:
@@ -5,18 +10,22 @@ source:
 
 package:
   name: clang-helpers
-  version: {{ GIT_DESCRIBE_TAG[1:] }}
+  #: .. versionadded:: 0.6
+  script: python setup.py install --single-version-externally-managed --record record.txt
+  #: .. versionchanged:: 0.6
+  version: {{ GIT_VERSION }}
 
 build:
   # If this is a new build for the same version, increment the build
   # number. If you do not include this key, it defaults to 0.
-  number: {{ GIT_DESCRIBE_NUMBER }}
+  number: 0
+  #: .. versionadded:: 0.6
+  noarch: python
 
 requirements:
   build:
     - clang
     - future
-    - paver
     - path_helpers
     - pydash
     - python
