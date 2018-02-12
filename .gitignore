@@ -1,6 +1,5 @@
 *.pyc
 RELEASE-VERSION
 MANIFEST
-setup.py
 .sconsign.dblite
 .ropeproject

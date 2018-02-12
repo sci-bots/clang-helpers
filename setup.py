@@ -1,7 +1,11 @@
+#!/usr/bin/env python
+# -*- encoding: utf-8 -*-
+from __future__ import absolute_import
+from __future__ import print_function
+
+from setuptools import setup
 import sys
 
-from paver.easy import task, needs
-from paver.setuputils import setup, install_distutils_tasks
 sys.path.insert(0, '.')
 import version
 
@@ -16,17 +20,3 @@ setup(name='clang_helpers',
       license='GPL',
       packages=['clang_helpers'],
       install_requires=['path_helpers', 'pydash'])
-
-
-@task
-@needs('generate_setup', 'minilib', 'setuptools.command.sdist')
-def sdist():
-    """Overrides sdist to make sure that our setup.py is generated."""
-    pass
-
-
-@task
-@needs('generate_setup', 'minilib', 'setuptools.command.bdist_wheel')
-def bdist_wheel():
-    """Overrides bdist_wheel to make sure that our setup.py is generated."""
-    pass
