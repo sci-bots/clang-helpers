@@ -10,8 +10,6 @@ source:
 
 package:
   name: clang-helpers
-  #: .. versionadded:: 0.6
-  script: python setup.py install --single-version-externally-managed --record record.txt
   #: .. versionchanged:: 0.6
   version: {{ GIT_VERSION }}
 
@@ -21,6 +19,9 @@ build:
   number: 0
   #: .. versionadded:: 0.6
   noarch: python
+  #: .. versionadded:: 0.6
+  #: .. versionchange:: 0.6.1
+  script: python setup.py install --single-version-externally-managed --record record.txt
 
 requirements:
   build:
