@@ -47,6 +47,12 @@ requirements:
     #: .. versionadded:: X.X.X
     - six
 
+test:
+  imports:
+    - clang_helpers
+    - clang_helpers.clang_ast
+    - clang_helpers.data_frame
+
 about:
   home: http://github.com/wheeler-microfluidics/clang-helpers
   license: MIT
