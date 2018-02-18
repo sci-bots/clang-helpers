@@ -32,6 +32,8 @@ requirements:
     - path_helpers
     - pydash
     - python
+    #: .. versionadded:: X.X.X
+    - six
 
   run:
     #: .. versionadded:: X.X.X
@@ -40,6 +42,8 @@ requirements:
     - clang
     - path_helpers
     - pydash
+    #: .. versionadded:: X.X.X
+    - six
 
 about:
   home: http://github.com/wheeler-microfluidics/clang-helpers
