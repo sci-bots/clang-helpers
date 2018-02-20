@@ -25,9 +25,10 @@ build:
 
 requirements:
   build:
-    - clang
     #: .. versionadded:: X.X.X
     - pandas
+    #: .. versionadded:: X.X.X
+    - python-clang
     - future
     - path_helpers
     - pydash
@@ -39,7 +40,8 @@ requirements:
     #: .. versionadded:: X.X.X
     - pandas
     - python
-    - clang
+    #: .. versionadded:: X.X.X
+    - python-clang
     - path_helpers
     - pydash
     #: .. versionadded:: X.X.X
