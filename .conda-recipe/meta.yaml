@@ -25,26 +25,26 @@ build:
 
 requirements:
   build:
-    #: .. versionadded:: X.X.X
+    #: .. versionadded:: 0.6.2
     - pandas
-    #: .. versionadded:: X.X.X
+    #: .. versionadded:: 0.6.2
     - python-clang
     - future
     - path_helpers
     - pydash
     - python
-    #: .. versionadded:: X.X.X
+    #: .. versionadded:: 0.6.2
     - six
 
   run:
-    #: .. versionadded:: X.X.X
+    #: .. versionadded:: 0.6.2
     - pandas
     - python
-    #: .. versionadded:: X.X.X
+    #: .. versionadded:: 0.6.2
     - python-clang
     - path_helpers
     - pydash
-    #: .. versionadded:: X.X.X
+    #: .. versionadded:: 0.6.2
     - six
 
 test:
