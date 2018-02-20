@@ -20,22 +20,38 @@ build:
   #: .. versionadded:: 0.6
   noarch: python
   #: .. versionadded:: 0.6
-  #: .. versionchange:: 0.6.1
+  #: .. versionchanged:: 0.6.1
   script: python setup.py install --single-version-externally-managed --record record.txt
 
 requirements:
   build:
-    - clang
+    #: .. versionadded:: 0.6.2
+    - pandas
+    #: .. versionadded:: 0.6.2
+    - python-clang
     - future
     - path_helpers
     - pydash
     - python
+    #: .. versionadded:: 0.6.2
+    - six
 
   run:
+    #: .. versionadded:: 0.6.2
+    - pandas
     - python
-    - clang
+    #: .. versionadded:: 0.6.2
+    - python-clang
     - path_helpers
     - pydash
+    #: .. versionadded:: 0.6.2
+    - six
+
+test:
+  imports:
+    - clang_helpers
+    - clang_helpers.clang_ast
+    - clang_helpers.data_frame
 
 about:
   home: http://github.com/wheeler-microfluidics/clang-helpers

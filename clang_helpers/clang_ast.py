@@ -10,6 +10,7 @@
 # Note : Make sure that your Python runtime and Clang are same architecture
 from __future__ import print_function
 
+from __future__ import absolute_import
 from collections import OrderedDict
 import sys
 
@@ -18,13 +19,15 @@ import clang.cindex
 import path_helpers as ph
 import pydash as py_
 from . import STD_INT_KIND
+from six.moves import range
+from six.moves import zip
 
 
 def mergedicts(dict1, dict2):
     # See [here][1].
     #
     # [1]: http://stackoverflow.com/questions/7204805/dictionaries-of-dictionaries-merge/7205107#7205107
-    for k in set(dict1.keys()).union(dict2.keys()):
+    for k in set(dict1.keys()).union(list(dict2.keys())):
         if k in dict1 and k in dict2:
             if isinstance(dict1[k], dict) and isinstance(dict2[k], dict):
                 yield (k, dict(mergedicts(dict1[k], dict2[k])))

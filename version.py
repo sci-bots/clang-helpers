@@ -36,6 +36,7 @@ With that setup, a new release can be labelled by simply invoking:
     git tag -s v1.0
 """
 from __future__ import print_function
+from __future__ import absolute_import
 from builtins import str
 
 __author__ = ('Douglas Creager <dcreager@dcreager.net>',

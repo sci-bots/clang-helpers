@@ -4,6 +4,7 @@ arguments of the methods of a class.
 
 See `get_clang_methods_frame(class_cursor)`.
 '''
+from __future__ import absolute_import
 from collections import OrderedDict
 
 import pandas as pd
