@@ -26,12 +26,16 @@ build:
 requirements:
   build:
     - clang
+    #: .. versionadded:: X.X.X
+    - pandas
     - future
     - path_helpers
     - pydash
     - python
 
   run:
+    #: .. versionadded:: X.X.X
+    - pandas
     - python
     - clang
     - path_helpers
