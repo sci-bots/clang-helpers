@@ -28,9 +28,9 @@ requirements:
     #: .. versionadded:: 0.6.2
     - pandas
     #: .. versionadded:: 0.6.2
-    - python-clang
+    - python-clang >=5.0.0
     - future
-    - path_helpers
+    - path_helpers >=0.7
     - pydash
     - python
     #: .. versionadded:: 0.6.2
@@ -41,8 +41,8 @@ requirements:
     - pandas
     - python
     #: .. versionadded:: 0.6.2
-    - python-clang
-    - path_helpers
+    - python-clang >=5.0.0
+    - path_helpers >=0.7
     - pydash
     #: .. versionadded:: 0.6.2
     - six
