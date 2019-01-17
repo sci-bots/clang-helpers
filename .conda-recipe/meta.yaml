@@ -46,6 +46,8 @@ requirements:
     - pydash
     #: .. versionadded:: 0.6.2
     - six
+    #: .. versionadded:: 0.9
+    - clang-libcxx
 
 test:
   imports:

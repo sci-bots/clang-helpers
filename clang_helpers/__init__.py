@@ -2,10 +2,12 @@ from __future__ import print_function
 
 from __future__ import absolute_import
 from collections import OrderedDict
+import sys
 
 from clang.cindex import CursorKind, TypeKind
 import clang
 import clang.cindex
+import path_helpers as ph
 
 from ._version import get_versions
 __version__ = get_versions()['version']
@@ -110,8 +112,21 @@ def extract_class_declarations(root_cursor, include_templates=True):
 
 
 def open_cpp_source(source_path, *args, **kwargs):
+    '''
+    .. versionchanged:: 0.9
+        Add header directory from ``clang-libcxx`` Conda package to includes
+        path, if it is available (Windows only).  Note that the ``CPATH``
+        environment varaible can also be modified to add additional directories
+        to the header search path.
+    '''
     index = clang.cindex.Index.create()
-    translational_unit = index.parse(source_path, ['-x', 'c++'] + list(args),
+    default_args = ['-x', 'c++']
+    if hasattr(sys, 'prefix'):
+        clang_libcxx_dir = ph.path(sys.prefix).joinpath('Library', 'include',
+                                                        'clang-libcxx')
+        if clang_libcxx_dir.isdir():
+            default_args += ['-I', clang_libcxx_dir]
+    translational_unit = index.parse(source_path, default_args + list(args),
                                      **kwargs)
 
     return translational_unit.cursor
